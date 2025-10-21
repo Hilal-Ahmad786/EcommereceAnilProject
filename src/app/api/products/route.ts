@@ -1,6 +1,8 @@
 // src/app/api/products/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
+import { getServerSession } from 'next-auth'
+import { authOptions } from '@/lib/auth'
 
 export async function GET(request: NextRequest) {
   try {
@@ -71,7 +73,7 @@ export async function GET(request: NextRequest) {
   } catch (error) {
     console.error('Error fetching products:', error)
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch products' },
+      { success: false, error: 'Ürünler getirilirken hata oluştu' },
       { status: 500 }
     )
   }
@@ -79,23 +81,43 @@ export async function GET(request: NextRequest) {
 
 export async function POST(request: NextRequest) {
   try {
+    const session = await getServerSession(authOptions)
+    if (!session?.user || session.user.role !== 'ADMIN') {
+      return NextResponse.json(
+        { success: false, error: 'Unauthorized' },
+        { status: 401 }
+      )
+    }
+
     const body = await request.json()
     
+    // Check if slug exists
+    const existing = await prisma.product.findUnique({
+      where: { slug: body.slug }
+    })
+
+    if (existing) {
+      return NextResponse.json(
+        { success: false, error: 'Bu slug zaten kullanılıyor' },
+        { status: 400 }
+      )
+    }
+
     const product = await prisma.product.create({
       data: {
         name: body.name,
         slug: body.slug,
         description: body.description,
         shortDescription: body.shortDescription,
-        price: body.price,
-        comparePrice: body.comparePrice,
-        stock: body.stock,
+        price: parseFloat(body.price),
+        comparePrice: body.comparePrice ? parseFloat(body.comparePrice) : null,
+        stock: parseInt(body.stock),
         lowStockThreshold: body.lowStockThreshold || 5,
         sku: body.sku,
         barcode: body.barcode,
         dimensions: body.dimensions,
-        weight: body.weight,
-        weightUnit: body.weightUnit,
+        weight: body.weight ? parseFloat(body.weight) : null,
+        weightUnit: body.weightUnit || 'kg',
         featured: body.featured || false,
         isActive: body.isActive ?? true,
         categoryId: body.categoryId,
@@ -110,14 +132,18 @@ export async function POST(request: NextRequest) {
       include: {
         category: true,
         images: true,
+        woodFinishes: { include: { woodFinish: true } }
       },
     })
 
-    return NextResponse.json({ success: true, data: product }, { status: 201 })
+    return NextResponse.json({ 
+      success: true, 
+      data: product 
+    }, { status: 201 })
   } catch (error) {
     console.error('Error creating product:', error)
     return NextResponse.json(
-      { success: false, error: 'Failed to create product' },
+      { success: false, error: 'Ürün oluşturulurken hata oluştu' },
       { status: 500 }
     )
   }
