@@ -1,14 +1,18 @@
-import { prisma } from '@/lib/prisma'
-import bcrypt from 'bcryptjs'
-import type { NextAuthOptions, User as NextAuthUser } from 'next-auth'
-import CredentialsProvider from 'next-auth/providers/credentials'
-import { PrismaAdapter } from '@next-auth/prisma-adapter'
+// ============================================
+// FILE: src/lib/auth.ts
+// Updated to work with your Prisma schema
+// ============================================
+
+import { NextAuthOptions } from "next-auth"
+import CredentialsProvider from "next-auth/providers/credentials"
+import bcrypt from "bcryptjs"
+import { prisma } from "@/lib/prisma"
+import { Role } from "@prisma/client"
 
 export const authOptions: NextAuthOptions = {
-  adapter: PrismaAdapter(prisma),
   providers: [
     CredentialsProvider({
-      name: 'Credentials',
+      name: "Credentials",
       credentials: {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" }
@@ -26,9 +30,12 @@ export const authOptions: NextAuthOptions = {
           return null
         }
 
-        const isValid = await bcrypt.compare(credentials.password, user.password)
+        const isPasswordValid = await bcrypt.compare(
+          credentials.password,
+          user.password
+        )
 
-        if (!isValid) {
+        if (!isPasswordValid) {
           return null
         }
 
@@ -37,31 +44,33 @@ export const authOptions: NextAuthOptions = {
           email: user.email,
           name: user.name,
           role: user.role,
+          image: user.image
         }
       }
     })
   ],
-  session: {
-    strategy: 'jwt',
-  },
   callbacks: {
     async jwt({ token, user }) {
       if (user) {
+        token.role = user.role
         token.id = user.id
-        token.role = (user as any).role
       }
       return token
     },
     async session({ session, token }) {
-      if (session.user) {
-        (session.user as any).id = token.id
-        (session.user as any).role = token.role
+      if (session?.user) {
+        session.user.role = token.role as Role
+        session.user.id = token.id as string
       }
       return session
     }
   },
   pages: {
-    signIn: '/giris',
+    signIn: "/admin/login"
   },
-  secret: process.env.NEXTAUTH_SECRET,
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  secret: process.env.NEXTAUTH_SECRET
 }

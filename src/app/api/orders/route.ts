@@ -1,116 +1,186 @@
-// src/app/api/orders/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { generateOrderNumber } from '@/lib/utils'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
 
+// ============================================
+// FILE: src/app/api/orders/route.ts
+// Orders API
+// ============================================
+
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { Role, OrderStatus } from "@prisma/client"
+
+// GET - Fetch orders
 export async function GET(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: "Yetkisiz erişim" },
+        { status: 401 }
+      )
     }
 
-    const { searchParams } = new URL(request.url)
-    const userId = searchParams.get('userId')
-    
-    // Admin can see all orders, customers only their own
+    const searchParams = request.nextUrl.searchParams
+    const status = searchParams.get('status')
+
     const where: any = {}
-    if (session.user.role !== 'ADMIN') {
+    
+    // Non-admin users can only see their own orders
+    if (session.user.role !== Role.ADMIN) {
       where.userId = session.user.id
-    } else if (userId) {
-      where.userId = userId
+    }
+    
+    if (status) {
+      where.status = status as OrderStatus
     }
 
     const orders = await prisma.order.findMany({
       where,
       include: {
-        user: { select: { name: true, email: true } },
+        user: {
+          select: {
+            name: true,
+            email: true
+          }
+        },
         address: true,
         items: {
-          include: { product: { select: { name: true, slug: true } } },
-        },
+          include: {
+            product: {
+              select: {
+                name: true,
+                slug: true
+              }
+            }
+          }
+        }
       },
-      orderBy: { createdAt: 'desc' },
+      orderBy: { createdAt: 'desc' }
     })
-
-    return NextResponse.json({ success: true, data: orders })
+    
+    return NextResponse.json(orders)
   } catch (error) {
-    console.error('Error fetching orders:', error)
+    console.error('Orders API Error:', error)
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch orders' },
+      { error: "Siparişler yüklenemedi" },
       { status: 500 }
     )
   }
 }
 
+// POST - Create new order
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    
+    if (!session) {
+      return NextResponse.json(
+        { error: "Sipariş vermek için giriş yapmalısınız" },
+        { status: 401 }
+      )
     }
 
     const body = await request.json()
     const { items, addressId, paymentMethod, customerNote } = body
 
     // Calculate totals
-    const subtotal = items.reduce(
-      (sum: number, item: any) => sum + item.price * item.quantity,
-      0
-    )
-    const shippingCost = 0 // Free shipping
-    const tax = 0
-    const discount = 0
-    const total = subtotal + shippingCost + tax - discount
+    let subtotal = 0
+    const orderItems = []
 
-    // Create order with items
+    for (const item of items) {
+      const product = await prisma.product.findUnique({
+        where: { id: item.productId },
+        include: {
+          images: {
+            orderBy: { order: 'asc' },
+            take: 1
+          }
+        }
+      })
+
+      if (!product) {
+        return NextResponse.json(
+          { error: `Ürün bulunamadı: ${item.productId}` },
+          { status: 404 }
+        )
+      }
+
+      if (product.stock < item.quantity) {
+        return NextResponse.json(
+          { error: `Yetersiz stok: ${product.name}` },
+          { status: 400 }
+        )
+      }
+
+      const unitPrice = parseFloat(product.price.toString())
+      const totalPrice = unitPrice * item.quantity
+
+      subtotal += totalPrice
+
+      orderItems.push({
+        productId: product.id,
+        productName: product.name,
+        productImage: product.images[0]?.url,
+        woodFinishName: item.woodFinishName,
+        quantity: item.quantity,
+        unitPrice,
+        totalPrice
+      })
+    }
+
+    // Calculate shipping and tax
+    const shippingCost = subtotal >= 5000 ? 0 : 50 // Free shipping over 5000 TL
+    const tax = subtotal * 0.18 // 18% KDV
+    const total = subtotal + shippingCost + tax
+
+    // Generate order number
+    const orderNumber = `ORD-${Date.now()}-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
+
+    // Create order
     const order = await prisma.order.create({
       data: {
-        orderNumber: generateOrderNumber(),
+        orderNumber,
         userId: session.user.id,
         addressId,
         subtotal,
         shippingCost,
         tax,
-        discount,
         total,
         paymentMethod,
-        paymentStatus: 'PENDING',
-        status: 'PENDING',
         customerNote,
         items: {
-          create: items.map((item: any) => ({
-            productId: item.productId,
-            productName: item.name,
-            productImage: item.image,
-            woodFinishName: item.woodFinish?.name,
-            quantity: item.quantity,
-            unitPrice: item.price,
-            totalPrice: item.price * item.quantity,
-          })),
-        },
+          create: orderItems
+        }
       },
       include: {
-        items: true,
-        address: true,
-      },
+        items: {
+          include: {
+            product: true
+          }
+        },
+        address: true
+      }
     })
 
-    // Update product stock
+    // Reduce stock
     for (const item of items) {
       await prisma.product.update({
         where: { id: item.productId },
-        data: { stock: { decrement: item.quantity } },
+        data: {
+          stock: {
+            decrement: item.quantity
+          }
+        }
       })
     }
 
-    return NextResponse.json({ success: true, data: order }, { status: 201 })
+    return NextResponse.json(order)
   } catch (error) {
-    console.error('Error creating order:', error)
+    console.error('Create Order Error:', error)
     return NextResponse.json(
-      { success: false, error: 'Failed to create order' },
+      { error: "Sipariş oluşturulamadı" },
       { status: 500 }
     )
   }

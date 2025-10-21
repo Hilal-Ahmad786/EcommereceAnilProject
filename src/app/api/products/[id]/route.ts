@@ -1,9 +1,15 @@
-// src/app/api/products/[id]/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+// ============================================
+// FILE: src/app/api/products/[id]/route.ts
+// Single product operations
+// ============================================
 
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+import { getServerSession } from "next-auth"
+import { authOptions } from "@/lib/auth"
+import { Role } from "@prisma/client"
+
+// GET - Fetch single product with all details
 export async function GET(
   request: NextRequest,
   { params }: { params: { id: string } }
@@ -12,110 +18,127 @@ export async function GET(
     const product = await prisma.product.findUnique({
       where: { id: params.id },
       include: {
-        category: true,
-        images: { orderBy: { order: 'asc' } },
-        woodFinishes: { include: { woodFinish: true } },
+        category: {
+          include: {
+            parent: true
+          }
+        },
+        images: {
+          orderBy: { order: 'asc' }
+        },
+        woodFinishes: {
+          include: {
+            woodFinish: true
+          }
+        },
         reviews: {
           where: { isApproved: true },
-          include: { user: { select: { name: true } } },
-          orderBy: { createdAt: 'desc' },
+          include: {
+            user: {
+              select: {
+                name: true,
+                image: true
+              }
+            }
+          },
+          orderBy: { createdAt: 'desc' }
         },
-      },
+        seo: true
+      }
     })
 
     if (!product) {
       return NextResponse.json(
-        { success: false, error: 'Ürün bulunamadı' },
+        { error: "Ürün bulunamadı" },
         { status: 404 }
       )
     }
 
-    return NextResponse.json({ success: true, data: product })
+    // Calculate average rating
+    const avgRating = await prisma.review.aggregate({
+      where: { productId: product.id, isApproved: true },
+      _avg: { rating: true },
+      _count: true
+    })
+
+    return NextResponse.json({
+      ...product,
+      averageRating: avgRating._avg.rating || 0,
+      reviewCount: avgRating._count
+    })
   } catch (error) {
-    console.error('Error fetching product:', error)
+    console.error('Get Product Error:', error)
     return NextResponse.json(
-      { success: false, error: 'Ürün getirilirken hata oluştu' },
+      { error: "Ürün yüklenemedi" },
       { status: 500 }
     )
   }
 }
 
+// PUT - Update product (Admin only)
 export async function PUT(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    
+    if (!session || session.user?.role !== Role.ADMIN) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
+        { error: "Yetkisiz erişim" },
         { status: 401 }
       )
     }
 
     const body = await request.json()
-    
-    // Check if slug is taken by another product
-    if (body.slug) {
-      const existing = await prisma.product.findFirst({
-        where: { 
-          slug: body.slug,
-          NOT: { id: params.id }
-        }
-      })
+    const {
+      images,
+      woodFinishes,
+      seo,
+      ...productData
+    } = body
 
-      if (existing) {
-        return NextResponse.json(
-          { success: false, error: 'Bu slug başka bir ürün tarafından kullanılıyor' },
-          { status: 400 }
-        )
-      }
-    }
-    
+    // Update product
     const product = await prisma.product.update({
       where: { id: params.id },
       data: {
-        name: body.name,
-        slug: body.slug,
-        description: body.description,
-        shortDescription: body.shortDescription,
-        price: body.price ? parseFloat(body.price) : undefined,
-        comparePrice: body.comparePrice ? parseFloat(body.comparePrice) : null,
-        stock: body.stock ? parseInt(body.stock) : undefined,
-        lowStockThreshold: body.lowStockThreshold,
-        sku: body.sku,
-        dimensions: body.dimensions,
-        weight: body.weight ? parseFloat(body.weight) : null,
-        featured: body.featured,
-        isActive: body.isActive,
-        categoryId: body.categoryId,
+        ...productData,
+        price: productData.price ? parseFloat(productData.price) : undefined,
+        comparePrice: productData.comparePrice ? parseFloat(productData.comparePrice) : undefined,
+        weight: productData.weight ? parseFloat(productData.weight) : undefined,
       },
       include: {
         category: true,
         images: true,
-        woodFinishes: { include: { woodFinish: true } }
-      },
+        woodFinishes: {
+          include: {
+            woodFinish: true
+          }
+        }
+      }
     })
 
-    return NextResponse.json({ success: true, data: product })
+    return NextResponse.json(product)
   } catch (error) {
-    console.error('Error updating product:', error)
+    console.error('Update Product Error:', error)
     return NextResponse.json(
-      { success: false, error: 'Ürün güncellenirken hata oluştu' },
+      { error: "Ürün güncellenemedi" },
       { status: 500 }
     )
   }
 }
 
+// DELETE - Delete product (Admin only)
 export async function DELETE(
   request: NextRequest,
   { params }: { params: { id: string } }
 ) {
   try {
     const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    
+    if (!session || session.user?.role !== Role.ADMIN) {
       return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
+        { error: "Yetkisiz erişim" },
         { status: 401 }
       )
     }
@@ -124,52 +147,11 @@ export async function DELETE(
       where: { id: params.id }
     })
 
-    return NextResponse.json({ 
-      success: true, 
-      message: 'Ürün silindi' 
-    })
+    return NextResponse.json({ message: "Ürün silindi" })
   } catch (error) {
-    console.error('Error deleting product:', error)
+    console.error('Delete Product Error:', error)
     return NextResponse.json(
-      { success: false, error: 'Ürün silinirken hata oluştu' },
-      { status: 500 }
-    )
-  }
-}
-
-// src/app/api/products/slug/[slug]/route.ts
-// Create this file separately for slug-based fetching
-export async function GET_BY_SLUG(
-  request: NextRequest,
-  { params }: { params: { slug: string } }
-) {
-  try {
-    const product = await prisma.product.findUnique({
-      where: { slug: params.slug },
-      include: {
-        category: true,
-        images: { orderBy: { order: 'asc' } },
-        woodFinishes: { include: { woodFinish: true } },
-        reviews: {
-          where: { isApproved: true },
-          include: { user: { select: { name: true } } },
-          orderBy: { createdAt: 'desc' },
-        },
-      },
-    })
-
-    if (!product) {
-      return NextResponse.json(
-        { success: false, error: 'Ürün bulunamadı' },
-        { status: 404 }
-      )
-    }
-
-    return NextResponse.json({ success: true, data: product })
-  } catch (error) {
-    console.error('Error fetching product:', error)
-    return NextResponse.json(
-      { success: false, error: 'Ürün getirilirken hata oluştu' },
+      { error: "Ürün silinemedi" },
       { status: 500 }
     )
   }
