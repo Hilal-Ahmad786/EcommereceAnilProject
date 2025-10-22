@@ -1,9 +1,13 @@
 // src/app/(main)/layout.tsx
-import { Suspense } from 'react'
 import TopBar from '@/components/layout/TopBar'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
 import FloatingButtons from '@/components/floating/FloatingButtons'
+import ClientSuspense from '@/components/common/ClientSuspense'
+
+// prevent static prerender so DB/search params don't run at build time
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default function MainLayout({
   children,
@@ -12,13 +16,15 @@ export default function MainLayout({
 }) {
   return (
     <div className="min-h-screen flex flex-col">
-      <TopBar />
-      <Header />
+      <ClientSuspense><TopBar /></ClientSuspense>
+      <ClientSuspense><Header /></ClientSuspense>
+
       <main className="flex-1">
-        <Suspense fallback={null}>{children}</Suspense>
+        <ClientSuspense>{children}</ClientSuspense>
       </main>
-      <Footer />
-      <FloatingButtons />
+
+      <ClientSuspense><Footer /></ClientSuspense>
+      <ClientSuspense><FloatingButtons /></ClientSuspense>
     </div>
   )
 }

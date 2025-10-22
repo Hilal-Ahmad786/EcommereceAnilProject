@@ -1,6 +1,7 @@
+// src/app/(main)/odeme/page.tsx
 'use client'
 
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
 import { useCartStore } from '@/store/cartStore'
 import CheckoutSteps from '@/components/checkout/CheckoutSteps'
@@ -8,19 +9,29 @@ import AddressForm from '@/components/checkout/AddressForm'
 import PaymentForm from '@/components/checkout/PaymentForm'
 import CartSummary from '@/components/cart/CartSummary'
 
+// stop static/prerender attempts on this page
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
+
 export default function CheckoutPage() {
   const router = useRouter()
   const [currentStep, setCurrentStep] = useState(1)
   const [addressData, setAddressData] = useState<any>(null)
+
   const items = useCartStore((state) => state.items)
   const totalPrice = useCartStore((state) => state.getTotalPrice())
   const clearCart = useCartStore((state) => state.clearCart)
 
-  // Redirect if cart is empty
-  if (items.length === 0) {
-    router.push('/sepet')
-    return null
-  }
+  // Redirect if cart is empty (do this in an effect — not during render)
+  const [redirecting, setRedirecting] = useState(false)
+  useEffect(() => {
+    if (items.length === 0) {
+      setRedirecting(true)
+      router.replace('/sepet')
+    }
+  }, [items.length, router])
+
+  if (redirecting) return null
 
   const handleAddressSubmit = (data: any) => {
     setAddressData(data)
@@ -29,7 +40,7 @@ export default function CheckoutPage() {
 
   const handlePaymentSubmit = async (data: any) => {
     try {
-      // TODO: Integrate with İyzico payment gateway
+      // TODO: Integrate with İyzico payment gateway (server action / API route)
       console.log('Processing payment...', {
         address: addressData,
         payment: data,

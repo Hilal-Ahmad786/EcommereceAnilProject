@@ -1,7 +1,10 @@
 // src/app/(admin)/layout.tsx
-import { Suspense } from 'react'
 import AdminSidebar from '@/components/layout/AdminSidebar'
 import AdminHeader from '@/components/layout/AdminHeader'
+import ClientSuspense from '@/components/common/ClientSuspense'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default function AdminLayout({
   children,
@@ -11,13 +14,14 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-natural-100 flex">
       {/* Sidebar */}
-      <AdminSidebar />
+      <ClientSuspense><AdminSidebar /></ClientSuspense>
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col ml-0 lg:ml-64">
-        <AdminHeader />
+        <ClientSuspense><AdminHeader /></ClientSuspense>
+
         <main className="flex-1 p-6">
-          <Suspense fallback={null}>{children}</Suspense>
+          <ClientSuspense>{children}</ClientSuspense>
         </main>
 
         {/* Footer */}
