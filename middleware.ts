@@ -1,44 +1,19 @@
-import { NextResponse } from 'next/server'
-import type { NextRequest } from 'next/server'
-import { getToken } from 'next-auth/jwt'
+// middleware.ts
+import { NextResponse } from "next/server"
+import { auth } from "@/lib/auth"
 
-export async function middleware(request: NextRequest) {
-  const token = await getToken({ 
-    req: request,
-    secret: process.env.NEXTAUTH_SECRET 
-  })
+export default auth((req) => {
+  const isAdminRoute = req.nextUrl.pathname.startsWith("/admin")
+  if (!isAdminRoute) return
 
-  const isAdminRoute = request.nextUrl.pathname.startsWith('/admin')
-  const isAuthRoute = request.nextUrl.pathname.startsWith('/giris') || 
-                      request.nextUrl.pathname.startsWith('/kayit')
-  const isAccountRoute = request.nextUrl.pathname.startsWith('/hesabim')
-
-  // Protect admin routes
-  if (isAdminRoute && (!token || token.role !== 'ADMIN')) {
-    return NextResponse.redirect(new URL('/giris', request.url))
+  const role = req.auth?.user?.role as string | undefined
+  if (role !== "ADMIN") {
+    const url = new URL("/admin/login", req.nextUrl.origin)
+    url.searchParams.set("callbackUrl", req.nextUrl.pathname)
+    return NextResponse.redirect(url)
   }
-
-  // Protect customer account routes
-  if (isAccountRoute && !token) {
-    return NextResponse.redirect(new URL('/giris', request.url))
-  }
-
-  // Redirect authenticated users away from auth pages
-  if (isAuthRoute && token) {
-    if (token.role === 'ADMIN') {
-      return NextResponse.redirect(new URL('/admin', request.url))
-    }
-    return NextResponse.redirect(new URL('/', request.url))
-  }
-
-  return NextResponse.next()
-}
+})
 
 export const config = {
-  matcher: [
-    '/admin/:path*',
-    '/giris',
-    '/kayit',
-    '/hesabim/:path*'
-  ],
+  matcher: ["/admin/:path*"],
 }

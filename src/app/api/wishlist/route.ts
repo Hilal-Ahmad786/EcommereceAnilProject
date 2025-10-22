@@ -1,6 +1,6 @@
 // ============================================
 // FILE: src/app/api/wishlist/route.ts
-// Wishlist API
+// Wishlist API (clean + build-safe)
 // ============================================
 
 import { NextRequest, NextResponse } from "next/server"
@@ -12,39 +12,27 @@ import { authOptions } from "@/lib/auth"
 export async function GET() {
   try {
     const session = await getServerSession(authOptions)
-    
-    if (!session) {
-      return NextResponse.json(
-        { error: "Yetkisiz erişim" },
-        { status: 401 }
-      )
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: "Yetkisiz erişim" }, { status: 401 })
     }
 
     const wishlist = await prisma.wishlistItem.findMany({
-      where: {
-        userId: session.user.id
-      },
+      where: { userId: session.user.id },
       include: {
         product: {
           include: {
             category: true,
-            images: {
-              orderBy: { order: 'asc' },
-              take: 1
-            }
-          }
-        }
+            images: { orderBy: { order: "asc" }, take: 1 },
+          },
+        },
       },
-      orderBy: { createdAt: 'desc' }
+      orderBy: { createdAt: "desc" },
     })
-    
-    return NextResponse.json(wishlist)
+
+    return NextResponse.json({ success: true, data: wishlist })
   } catch (error) {
-    console.error('Wishlist API Error:', error)
-    return NextResponse.json(
-      { error: "Favoriler yüklenemedi" },
-      { status: 500 }
-    )
+    console.error("Wishlist GET Error:", error)
+    return NextResponse.json({ success: false, error: "Favoriler yüklenemedi" }, { status: 500 })
   }
 }
 
@@ -52,57 +40,47 @@ export async function GET() {
 export async function POST(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
-    if (!session) {
+    if (!session?.user?.id) {
       return NextResponse.json(
-        { error: "Favorilere eklemek için giriş yapmalısınız" },
+        { success: false, error: "Favorilere eklemek için giriş yapmalısınız" },
         { status: 401 }
       )
     }
 
     const { productId } = await request.json()
+    if (!productId) {
+      return NextResponse.json({ success: false, error: "Ürün ID gerekli" }, { status: 400 })
+    }
 
-    // Check if already in wishlist
+    // Avoid duplicates (composite unique: userId_productId)
     const existing = await prisma.wishlistItem.findUnique({
       where: {
         userId_productId: {
           userId: session.user.id,
-          productId
-        }
-      }
+          productId,
+        },
+      },
     })
-
     if (existing) {
-      return NextResponse.json(
-        { error: "Ürün zaten favorilerde" },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, error: "Ürün zaten favorilerde" }, { status: 400 })
     }
 
-    const wishlistItem = await prisma.wishlistItem.create({
-      data: {
-        userId: session.user.id,
-        productId
-      },
+    const item = await prisma.wishlistItem.create({
+      data: { userId: session.user.id, productId },
       include: {
         product: {
           include: {
-            images: {
-              orderBy: { order: 'asc' },
-              take: 1
-            }
-          }
-        }
-      }
+            images: { orderBy: { order: "asc" }, take: 1 },
+            category: true,
+          },
+        },
+      },
     })
 
-    return NextResponse.json(wishlistItem)
+    return NextResponse.json({ success: true, data: item }, { status: 201 })
   } catch (error) {
-    console.error('Add to Wishlist Error:', error)
-    return NextResponse.json(
-      { error: "Favorilere eklenemedi" },
-      { status: 500 }
-    )
+    console.error("Wishlist POST Error:", error)
+    return NextResponse.json({ success: false, error: "Favorilere eklenemedi" }, { status: 500 })
   }
 }
 
@@ -110,183 +88,28 @@ export async function POST(request: NextRequest) {
 export async function DELETE(request: NextRequest) {
   try {
     const session = await getServerSession(authOptions)
-    
-    if (!session) {
-      return NextResponse.json(
-        { error: "Yetkisiz erişim" },
-        { status: 401 }
-      )
+    if (!session?.user?.id) {
+      return NextResponse.json({ success: false, error: "Yetkisiz erişim" }, { status: 401 })
     }
 
     const { searchParams } = new URL(request.url)
-    const productId = searchParams.get('productId')
-
+    const productId = searchParams.get("productId")
     if (!productId) {
-      return NextResponse.json(
-        { error: "Ürün ID gerekli" },
-        { status: 400 }
-      )
+      return NextResponse.json({ success: false, error: "Ürün ID gerekli" }, { status: 400 })
     }
 
     await prisma.wishlistItem.delete({
       where: {
         userId_productId: {
           userId: session.user.id,
-          productId
-        }
-      }
-    })
-
-    return NextResponse.json({ message: "Favorilerden kaldırıldı" })
-  } catch (error) {
-    console.error('Remove from Wishlist Error:', error)
-    return NextResponse.json(
-      { error: "Favorilerden kaldırılamadı" },
-      { status: 500 }
-    )
-  }
-} = {
-      isActive: true
-    }
-    
-    if (categoryId) {
-      where.categoryId = categoryId
-    }
-    
-    if (featured === 'true') {
-      where.featured = true
-    }
-    
-    if (search) {
-      where.OR = [
-        { name: { contains: search, mode: 'insensitive' } },
-        { description: { contains: search, mode: 'insensitive' } },
-        { shortDescription: { contains: search, mode: 'insensitive' } }
-      ]
-    }
-
-    if (minPrice || maxPrice) {
-      where.price = {}
-      if (minPrice) where.price.gte = parseFloat(minPrice)
-      if (maxPrice) where.price.lte = parseFloat(maxPrice)
-    }
-
-    const [products, total] = await Promise.all([
-      prisma.product.findMany({
-        where,
-        include: {
-          category: true,
-          images: {
-            orderBy: { order: 'asc' }
-          },
-          woodFinishes: {
-            include: {
-              woodFinish: true
-            }
-          },
-          _count: {
-            select: { reviews: true }
-          }
+          productId,
         },
-        orderBy: { [sortBy]: sortOrder },
-        take: limit,
-        skip: offset
-      }),
-      prisma.product.count({ where })
-    ])
-
-    // Calculate average ratings
-    const productsWithRatings = await Promise.all(
-      products.map(async (product) => {
-        const avgRating = await prisma.review.aggregate({
-          where: { productId: product.id, isApproved: true },
-          _avg: { rating: true }
-        })
-
-        return {
-          ...product,
-          averageRating: avgRating._avg.rating || 0,
-          reviewCount: product._count.reviews
-        }
-      })
-    )
-
-    return NextResponse.json({
-      products: productsWithRatings,
-      total,
-      limit,
-      offset,
-      hasMore: offset + limit < total
-    })
-  } catch (error) {
-    console.error('Products API Error:', error)
-    return NextResponse.json(
-      { error: "Ürünler yüklenemedi" },
-      { status: 500 }
-    )
-  }
-}
-
-// POST - Create new product (Admin only)
-export async function POST(request: NextRequest) {
-  try {
-    const session = await getServerSession(authOptions)
-    
-    if (!session || session.user?.role !== Role.ADMIN) {
-      return NextResponse.json(
-        { error: "Yetkisiz erişim" },
-        { status: 401 }
-      )
-    }
-
-    const body = await request.json()
-    const {
-      images = [],
-      woodFinishes = [],
-      seo,
-      ...productData
-    } = body
-
-    const product = await prisma.product.create({
-      data: {
-        ...productData,
-        price: parseFloat(productData.price),
-        comparePrice: productData.comparePrice ? parseFloat(productData.comparePrice) : null,
-        weight: productData.weight ? parseFloat(productData.weight) : null,
-        images: {
-          create: images.map((img: any, index: number) => ({
-            url: img.url,
-            alt: img.alt || productData.name,
-            order: index + 1
-          }))
-        },
-        woodFinishes: woodFinishes.length > 0 ? {
-          create: woodFinishes.map((wf: any) => ({
-            woodFinishId: wf.woodFinishId,
-            priceModifier: wf.priceModifier ? parseFloat(wf.priceModifier) : null
-          }))
-        } : undefined,
-        seo: seo ? {
-          create: seo
-        } : undefined
       },
-      include: {
-        category: true,
-        images: true,
-        woodFinishes: {
-          include: {
-            woodFinish: true
-          }
-        }
-      }
     })
 
-    return NextResponse.json(product)
+    return NextResponse.json({ success: true, message: "Favorilerden kaldırıldı" })
   } catch (error) {
-    console.error('Create Product Error:', error)
-    return NextResponse.json(
-      { error: "Ürün oluşturulamadı" },
-      { status: 500 }
-    )
+    console.error("Wishlist DELETE Error:", error)
+    return NextResponse.json({ success: false, error: "Favorilerden kaldırılamadı" }, { status: 500 })
   }
 }

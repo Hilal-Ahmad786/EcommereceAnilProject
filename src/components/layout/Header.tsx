@@ -1,15 +1,22 @@
+// src/components/layout/Header.tsx
 'use client'
 
 import Link from 'next/link'
 import { ShoppingCart, Heart, User, Menu, Search } from 'lucide-react'
 import { useCartStore } from '@/store/cartStore'
 import { useWishlistStore } from '@/store/wishlistStore'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 
 export default function Header() {
   const [isMobileMenuOpen, setIsMobileMenuOpen] = useState(false)
+  const [mounted, setMounted] = useState(false)
+
+  // Hydration guard
+  useEffect(() => setMounted(true), [])
+
+  // Select from stores
   const totalItems = useCartStore((state) => state.getTotalItems())
-  const wishlistItems = useWishlistStore((state) => state.items)
+  const wishlistCount = useWishlistStore((state) => state.items.length)
 
   return (
     <header className="sticky top-0 z-40 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
@@ -17,41 +24,24 @@ export default function Header() {
         <div className="flex h-16 items-center justify-between">
           {/* Logo */}
           <Link href="/" className="flex items-center space-x-2">
-            <span className="text-2xl font-bold text-walnut-500">
-              Mutfak Mobilya
-            </span>
+            <span className="text-2xl font-bold text-walnut-500">Mutfak Mobilya</span>
           </Link>
 
           {/* Desktop Navigation */}
           <nav className="hidden md:flex items-center space-x-8">
-            <Link
-              href="/"
-              className="text-sm font-medium transition-colors hover:text-walnut-500"
-            >
+            <Link href="/" className="text-sm font-medium transition-colors hover:text-walnut-500">
               Ana Sayfa
             </Link>
-            <Link
-              href="/urunler"
-              className="text-sm font-medium transition-colors hover:text-walnut-500"
-            >
+            <Link href="/urunler" className="text-sm font-medium transition-colors hover:text-walnut-500">
               Ürünler
             </Link>
-            <Link
-              href="/blog"
-              className="text-sm font-medium transition-colors hover:text-walnut-500"
-            >
+            <Link href="/blog" className="text-sm font-medium transition-colors hover:text-walnut-500">
               Blog
             </Link>
-            <Link
-              href="/hakkimizda"
-              className="text-sm font-medium transition-colors hover:text-walnut-500"
-            >
+            <Link href="/hakkimizda" className="text-sm font-medium transition-colors hover:text-walnut-500">
               Hakkımızda
             </Link>
-            <Link
-              href="/iletisim"
-              className="text-sm font-medium transition-colors hover:text-walnut-500"
-            >
+            <Link href="/iletisim" className="text-sm font-medium transition-colors hover:text-walnut-500">
               İletişim
             </Link>
           </nav>
@@ -60,6 +50,7 @@ export default function Header() {
           <div className="flex items-center space-x-4">
             {/* Search */}
             <button
+              type="button"
               className="p-2 hover:bg-natural-100 rounded-lg transition-colors"
               aria-label="Ara"
             >
@@ -73,9 +64,9 @@ export default function Header() {
               aria-label="Favoriler"
             >
               <Heart className="h-5 w-5" />
-              {wishlistItems.length > 0 && (
+              {mounted && wishlistCount > 0 && (
                 <span className="absolute -top-1 -right-1 bg-sage-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
-                  {wishlistItems.length}
+                  {wishlistCount}
                 </span>
               )}
             </Link>
@@ -87,7 +78,7 @@ export default function Header() {
               aria-label="Sepet"
             >
               <ShoppingCart className="h-5 w-5" />
-              {totalItems > 0 && (
+              {mounted && totalItems > 0 && (
                 <span className="absolute -top-1 -right-1 bg-walnut-500 text-white text-xs rounded-full h-5 w-5 flex items-center justify-center">
                   {totalItems}
                 </span>
@@ -105,9 +96,11 @@ export default function Header() {
 
             {/* Mobile Menu Toggle */}
             <button
+              type="button"
               className="md:hidden p-2 hover:bg-natural-100 rounded-lg transition-colors"
-              onClick={() => setIsMobileMenuOpen(!isMobileMenuOpen)}
+              onClick={() => setIsMobileMenuOpen((o) => !o)}
               aria-label="Menü"
+              aria-expanded={isMobileMenuOpen}
             >
               <Menu className="h-6 w-6" />
             </button>
@@ -118,46 +111,22 @@ export default function Header() {
         {isMobileMenuOpen && (
           <div className="md:hidden border-t py-4">
             <nav className="flex flex-col space-y-4">
-              <Link
-                href="/"
-                className="text-sm font-medium transition-colors hover:text-walnut-500"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
+              <Link href="/" className="text-sm font-medium transition-colors hover:text-walnut-500" onClick={() => setIsMobileMenuOpen(false)}>
                 Ana Sayfa
               </Link>
-              <Link
-                href="/urunler"
-                className="text-sm font-medium transition-colors hover:text-walnut-500"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
+              <Link href="/urunler" className="text-sm font-medium transition-colors hover:text-walnut-500" onClick={() => setIsMobileMenuOpen(false)}>
                 Ürünler
               </Link>
-              <Link
-                href="/blog"
-                className="text-sm font-medium transition-colors hover:text-walnut-500"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
+              <Link href="/blog" className="text-sm font-medium transition-colors hover:text-walnut-500" onClick={() => setIsMobileMenuOpen(false)}>
                 Blog
               </Link>
-              <Link
-                href="/hakkimizda"
-                className="text-sm font-medium transition-colors hover:text-walnut-500"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
+              <Link href="/hakkimizda" className="text-sm font-medium transition-colors hover:text-walnut-500" onClick={() => setIsMobileMenuOpen(false)}>
                 Hakkımızda
               </Link>
-              <Link
-                href="/iletisim"
-                className="text-sm font-medium transition-colors hover:text-walnut-500"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
+              <Link href="/iletisim" className="text-sm font-medium transition-colors hover:text-walnut-500" onClick={() => setIsMobileMenuOpen(false)}>
                 İletişim
               </Link>
-              <Link
-                href="/hesabim"
-                className="text-sm font-medium transition-colors hover:text-walnut-500"
-                onClick={() => setIsMobileMenuOpen(false)}
-              >
+              <Link href="/hesabim" className="text-sm font-medium transition-colors hover:text-walnut-500" onClick={() => setIsMobileMenuOpen(false)}>
                 Hesabım
               </Link>
             </nav>

@@ -1,6 +1,9 @@
+// src/app/(main)/urunler/page.tsx
 import { prisma } from "@/lib/prisma"
-import ProductGrid from '@/components/product/ProductGrid'
-import ProductFilter from '@/components/product/ProductFilter'
+import ProductGrid from "@/components/product/ProductGrid"
+import ProductFilter from "@/components/product/ProductFilter"
+
+export const dynamic = "force-dynamic"
 
 interface SearchParams {
   kategori?: string
@@ -9,55 +12,70 @@ interface SearchParams {
 
 async function getProducts(searchParams: SearchParams) {
   const where: any = { isActive: true }
-  
+
   if (searchParams.kategori) {
     const category = await prisma.category.findUnique({
-      where: { slug: searchParams.kategori }
+      where: { slug: searchParams.kategori },
     })
     if (category) where.categoryId = category.id
   }
-  
+
   if (searchParams.arama) {
     where.OR = [
-      { name: { contains: searchParams.arama, mode: 'insensitive' } },
-      { description: { contains: searchParams.arama, mode: 'insensitive' } }
+      { name: { contains: searchParams.arama, mode: "insensitive" } },
+      { description: { contains: searchParams.arama, mode: "insensitive" } },
     ]
   }
 
-  return await prisma.product.findMany({
+  return prisma.product.findMany({
     where,
     include: {
       category: true,
-      images: { orderBy: { order: 'asc' }, take: 1 }
+      images: { orderBy: { order: "asc" }, take: 1 },
     },
-    orderBy: { createdAt: 'desc' }
+    orderBy: { createdAt: "desc" },
   })
 }
 
-export default async function ProductsPage({
-  searchParams
-}: {
-  searchParams: SearchParams
-}) {
-  const products = await getProducts(searchParams)
+async function getCategories() {
+  return prisma.category.findMany({
+    where: { parentId: null },
+    orderBy: { order: "asc" },
+  })
+}
+
+export default async function ProductsPage({ searchParams }: { searchParams: SearchParams }) {
+  const [products, categories] = await Promise.all([getProducts(searchParams), getCategories()])
+
+  const transformedProducts = products.map((product) => ({
+    id: product.id,
+    name: product.name,
+    slug: product.slug,
+    price: Number(product.price),
+    comparePrice: product.comparePrice ? Number(product.comparePrice) : undefined,
+    image: product.images[0]?.url || "/placeholder.jpg",
+    category: product.category?.name ?? "",
+    stock: product.stock,
+  }))
+
+  const filterCategories = categories.map((c) => ({ id: c.slug, name: c.name }))
+  const initialFilterValue = {
+    categories: searchParams.kategori ? [searchParams.kategori] : [],
+  }
 
   return (
     <div className="container mx-auto px-4 py-8">
       <div className="mb-8">
-        <h1 className="text-3xl md:text-4xl font-bold text-walnut-700 mb-2">
-          Tüm Ürünler
-        </h1>
-        <p className="text-muted-foreground">
-          {products.length} ürün bulundu
-        </p>
+        <h1 className="text-3xl md:text-4xl font-bold text-walnut-700 mb-2">Tüm Ürünler</h1>
+        <p className="text-muted-foreground">{products.length} ürün bulundu</p>
       </div>
 
       <div className="grid lg:grid-cols-4 gap-8">
         <div className="lg:col-span-1">
-          <ProductFilter />
+          <ProductFilter categories={filterCategories} value={initialFilterValue} />
         </div>
         <div className="lg:col-span-3">
-          <ProductGrid products={products} />
+          <ProductGrid products={transformedProducts} emptyMessage="Ürün bulunamadı" />
         </div>
       </div>
     </div>

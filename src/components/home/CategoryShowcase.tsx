@@ -1,78 +1,74 @@
+// src/components/home/CategoryShowcase.tsx
 import Link from 'next/link'
 
-export default function CategoryShowcase() {
-  const categories = [
-    {
-      name: 'Mutfak Dolabı',
-      slug: 'mutfak-dolabi',
-      description: 'Modern ve klasik tasarımlar',
-      icon: '🗄️',
-    },
-    {
-      name: 'Mutfak Adası',
-      slug: 'mutfak-adasi',
-      description: 'Fonksiyonel ve şık çözümler',
-      icon: '🏝️',
-    },
-    {
-      name: 'Tezgah',
-      slug: 'tezgah',
-      description: 'Mermer, granit ve ahşap',
-      icon: '📐',
-    },
-    {
-      name: 'Bar Sandalyesi',
-      slug: 'bar-sandalyesi',
-      description: 'Rahat ve estetik',
-      icon: '🪑',
-    },
-    {
-      name: 'Mutfak Masası',
-      slug: 'mutfak-masasi',
-      description: 'Aile için ideal boyutlar',
-      icon: '🍽️',
-    },
-    {
-      name: 'Depolama Çözümleri',
-      slug: 'depolama',
-      description: 'Akıllı organizasyon',
-      icon: '📦',
-    },
-  ]
+interface Category {
+  id: string
+  slug: string
+  name: string
+  image?: string | null
+  _count?: {
+    products: number
+  }
+}
+
+interface CategoryShowcaseProps {
+  categories: Category[]
+}
+
+export default function CategoryShowcase({ categories }: CategoryShowcaseProps) {
+  if (!categories || categories.length === 0) {
+    return null
+  }
 
   return (
-    <section className="py-16 md:py-24 bg-natural-100">
-      <div className="container mx-auto px-4">
-        {/* Section Header */}
-        <div className="text-center mb-12">
-          <h2 className="text-3xl md:text-4xl font-bold text-walnut-700 mb-4">
-            Kategorilere Göz Atın
-          </h2>
-          <p className="text-muted-foreground max-w-2xl mx-auto">
-            İhtiyacınıza uygun mutfak mobilyası kategorisini keşfedin
-          </p>
-        </div>
+    <section className="container mx-auto px-4 py-16">
+      <div className="text-center mb-12">
+        <h2 className="text-3xl md:text-4xl font-bold text-walnut-700 mb-4">
+          Kategoriler
+        </h2>
+        <p className="text-muted-foreground">
+          Mutfak mobilyası kategorilerimize göz atın
+        </p>
+      </div>
 
-        {/* Categories Grid */}
-        <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4 md:gap-6">
-          {categories.map((category) => (
-            <Link
-              key={category.slug}
-              href={`/urunler/kategori/${category.slug}`}
-              className="group"
-            >
-              <div className="bg-white rounded-xl p-6 text-center hover:shadow-lg transition-all hover:-translate-y-1">
-                <div className="text-5xl mb-4">{category.icon}</div>
-                <h3 className="font-semibold text-lg mb-2 group-hover:text-walnut-600 transition-colors">
-                  {category.name}
-                </h3>
-                <p className="text-sm text-muted-foreground">
-                  {category.description}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {categories.map((category) => (
+          <Link
+            key={category.id}
+            href={`/urunler?kategori=${category.slug}`}
+            className="group relative aspect-square rounded-xl overflow-hidden"
+          >
+            {/* Background Image or Color */}
+            <div className="absolute inset-0 bg-gradient-to-br from-walnut-400 to-walnut-600">
+              {category.image ? (
+                <img
+                  src={category.image}
+                  alt={category.name}
+                  className="w-full h-full object-cover opacity-60 group-hover:opacity-40 group-hover:scale-110 transition-all duration-300"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-8xl opacity-30">
+                  🏠
+                </div>
+              )}
+            </div>
+
+            {/* Content Overlay */}
+            <div className="absolute inset-0 flex flex-col items-center justify-center text-white p-6">
+              <h3 className="text-2xl font-bold mb-2 text-center">
+                {category.name}
+              </h3>
+              {category._count && (
+                <p className="text-sm opacity-90">
+                  {category._count.products} ürün
                 </p>
+              )}
+              <div className="mt-4 px-4 py-2 bg-white text-walnut-600 rounded-lg font-semibold text-sm opacity-0 group-hover:opacity-100 transition-opacity">
+                Kategoriye Git →
               </div>
-            </Link>
-          ))}
-        </div>
+            </div>
+          </Link>
+        ))}
       </div>
     </section>
   )

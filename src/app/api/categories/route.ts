@@ -1,14 +1,13 @@
 // src/app/api/categories/route.ts
-import { NextRequest, NextResponse } from 'next/server'
-import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { NextRequest, NextResponse } from "next/server"
+import { prisma } from "@/lib/prisma"
+import { auth } from "@/lib/auth"
+import { revalidatePath } from "next/cache"
 
-// GET all categories
 export async function GET(request: NextRequest) {
   try {
     const { searchParams } = new URL(request.url)
-    const includeProducts = searchParams.get('includeProducts') === 'true'
+    const includeProducts = searchParams.get("includeProducts") === "true"
 
     const categories = await prisma.category.findMany({
       include: {
@@ -17,52 +16,49 @@ export async function GET(request: NextRequest) {
         ...(includeProducts && {
           products: {
             where: { isActive: true },
-            take: 10,
+            take: 8,
             include: {
-              images: { take: 1, orderBy: { order: 'asc' } }
-            }
+              images: { take: 1, orderBy: { order: "asc" } },
+            },
           },
         }),
         _count: { select: { products: true } },
       },
-      orderBy: { order: 'asc' },
+      orderBy: { order: "asc" },
     })
 
-    return NextResponse.json({ 
-      success: true, 
-      data: categories 
-    })
+    return NextResponse.json({ success: true, data: categories })
   } catch (error) {
-    console.error('Error fetching categories:', error)
+    console.error("Categories API Error:", error)
     return NextResponse.json(
-      { success: false, error: 'Failed to fetch categories' },
+      { success: false, error: "Kategoriler yüklenemedi" },
       { status: 500 }
     )
   }
 }
 
-// POST create category (Admin only)
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== 'ADMIN') {
-      return NextResponse.json(
-        { success: false, error: 'Unauthorized' },
-        { status: 401 }
-      )
+    const session = await auth()
+    const role = (session?.user as any)?.role
+    if (!session?.user || role !== "ADMIN") {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 })
     }
 
     const body = await request.json()
     const { name, slug, description, image, parentId, order } = body
 
-    // Check if slug already exists
-    const existing = await prisma.category.findUnique({
-      where: { slug }
-    })
+    if (!name || !slug) {
+      return NextResponse.json(
+        { success: false, error: "İsim ve slug zorunludur" },
+        { status: 400 }
+      )
+    }
 
+    const existing = await prisma.category.findUnique({ where: { slug } })
     if (existing) {
       return NextResponse.json(
-        { success: false, error: 'Bu slug zaten kullanılıyor' },
+        { success: false, error: "Bu slug zaten kullanılıyor" },
         { status: 400 }
       )
     }
@@ -73,24 +69,25 @@ export async function POST(request: NextRequest) {
         name,
         description,
         image,
-        parentId,
-        order: order || 0,
+        parentId: parentId || null,
+        order: order ?? 0,
       },
       include: {
         parent: true,
         children: true,
-        _count: { select: { products: true } }
-      }
+        _count: { select: { products: true } },
+      },
     })
 
-    return NextResponse.json({ 
-      success: true, 
-      data: category 
-    }, { status: 201 })
+    // refresh relevant pages
+    revalidatePath("/admin/kategoriler")
+    revalidatePath("/urunler")
+
+    return NextResponse.json({ success: true, data: category }, { status: 201 })
   } catch (error) {
-    console.error('Error creating category:', error)
+    console.error("Create Category Error:", error)
     return NextResponse.json(
-      { success: false, error: 'Kategori oluşturulurken hata oluştu' },
+      { success: false, error: "Kategori oluşturulamadı" },
       { status: 500 }
     )
   }

@@ -1,94 +1,129 @@
+// src/components/product/ProductFilter.tsx
+
 'use client'
 
-import { useState } from 'react'
+import { useCallback, useEffect, useMemo, useState } from 'react'
 import { ChevronDown, X } from 'lucide-react'
 
-interface FilterProps {
-  onFilterChange: (filters: FilterState) => void
-}
-
-interface FilterState {
+export interface FilterState {
   categories: string[]
   priceRange: { min: number; max: number }
   sortBy: string
   inStock: boolean
 }
 
-export default function ProductFilter({ onFilterChange }: FilterProps) {
-  const [isOpen, setIsOpen] = useState(false)
-  const [filters, setFilters] = useState<FilterState>({
-    categories: [],
-    priceRange: { min: 0, max: 100000 },
-    sortBy: 'newest',
-    inStock: false,
-  })
+interface CategoryOption {
+  id: string
+  name: string
+}
 
-  const categories = [
-    { id: 'mutfak-dolabi', name: 'Mutfak Dolabı' },
-    { id: 'mutfak-adasi', name: 'Mutfak Adası' },
-    { id: 'tezgah', name: 'Tezgah' },
-    { id: 'bar-sandalyesi', name: 'Bar Sandalyesi' },
-    { id: 'mutfak-masasi', name: 'Mutfak Masası' },
-  ]
+interface FilterProps {
+  /** Optional, called when filters change */
+  onFilterChange?: (filters: FilterState) => void
+  /** Optional initial values coming from URL/search params */
+  value?: Partial<FilterState>
+  /** Optional categories coming from DB */
+  categories?: CategoryOption[]
+}
+
+const DEFAULT_FILTERS: FilterState = {
+  categories: [],
+  priceRange: { min: 0, max: 100000 },
+  sortBy: 'newest',
+  inStock: false,
+}
+
+const FALLBACK_CATEGORIES: CategoryOption[] = [
+  { id: 'mutfak-dolabi', name: 'Mutfak Dolabı' },
+  { id: 'mutfak-adasi', name: 'Mutfak Adası' },
+  { id: 'tezgah', name: 'Tezgah' },
+  { id: 'bar-sandalyesi', name: 'Bar Sandalyesi' },
+  { id: 'mutfak-masasi', name: 'Mutfak Masası' },
+]
+
+export default function ProductFilter({ onFilterChange, value, categories }: FilterProps) {
+  const [isOpen, setIsOpen] = useState(false)
+
+  const initialFilters = useMemo<FilterState>(
+    () => ({
+      ...DEFAULT_FILTERS,
+      ...value,
+      priceRange: {
+        ...DEFAULT_FILTERS.priceRange,
+        ...(value?.priceRange ?? {}),
+      },
+    }),
+    [value]
+  )
+
+  const [filters, setFilters] = useState<FilterState>(initialFilters)
+
+  useEffect(() => {
+    setFilters(initialFilters)
+  }, [initialFilters])
+
+  const notify = useCallback(
+    (next: FilterState) => {
+      try {
+        onFilterChange?.(next)
+      } catch (e) {
+        console.error('ProductFilter onFilterChange error:', e)
+      }
+    },
+    [onFilterChange]
+  )
+
+  const categoryOptions = categories && categories.length > 0 ? categories : FALLBACK_CATEGORIES
 
   const handleCategoryToggle = (categoryId: string) => {
     const newCategories = filters.categories.includes(categoryId)
       ? filters.categories.filter((c) => c !== categoryId)
       : [...filters.categories, categoryId]
 
-    const newFilters = { ...filters, categories: newCategories }
-    setFilters(newFilters)
-    onFilterChange(newFilters)
+    const next = { ...filters, categories: newCategories }
+    setFilters(next)
+    notify(next)
   }
 
   const handleSortChange = (sortBy: string) => {
-    const newFilters = { ...filters, sortBy }
-    setFilters(newFilters)
-    onFilterChange(newFilters)
+    const next = { ...filters, sortBy }
+    setFilters(next)
+    notify(next)
   }
 
   const handleStockToggle = () => {
-    const newFilters = { ...filters, inStock: !filters.inStock }
-    setFilters(newFilters)
-    onFilterChange(newFilters)
+    const next = { ...filters, inStock: !filters.inStock }
+    setFilters(next)
+    notify(next)
   }
 
   const clearFilters = () => {
-    const defaultFilters: FilterState = {
-      categories: [],
-      priceRange: { min: 0, max: 100000 },
-      sortBy: 'newest',
-      inStock: false,
-    }
-    setFilters(defaultFilters)
-    onFilterChange(defaultFilters)
+    setFilters(DEFAULT_FILTERS)
+    notify(DEFAULT_FILTERS)
   }
 
-  const activeFilterCount =
-    filters.categories.length + (filters.inStock ? 1 : 0)
+  const activeFilterCount = filters.categories.length + (filters.inStock ? 1 : 0)
 
   return (
     <div className="mb-6">
       {/* Mobile Filter Toggle */}
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        type="button"
+        onClick={() => setIsOpen((o) => !o)}
         className="lg:hidden w-full flex items-center justify-between p-4 bg-white border rounded-lg mb-4"
+        aria-expanded={isOpen}
+        aria-controls="filters-panel"
       >
         <span className="font-semibold">
           Filtreler {activeFilterCount > 0 && `(${activeFilterCount})`}
         </span>
-        <ChevronDown
-          className={`h-5 w-5 transition-transform ${
-            isOpen ? 'rotate-180' : ''
-          }`}
-        />
+        <ChevronDown className={`h-5 w-5 transition-transform ${isOpen ? 'rotate-180' : ''}`} />
       </button>
 
       {/* Filter Panel */}
       <div
-        className={`${
-          isOpen ? 'block' : 'hidden'
-        } lg:block bg-white border rounded-lg p-6 space-y-6`}
+        id="filters-panel"
+        className={`${isOpen ? 'block' : 'hidden'} lg:block bg-white border rounded-lg p-6 space-y-6`}
       >
         {/* Sort By */}
         <div>
@@ -110,11 +145,8 @@ export default function ProductFilter({ onFilterChange }: FilterProps) {
         <div>
           <h3 className="font-semibold mb-3">Kategoriler</h3>
           <div className="space-y-2">
-            {categories.map((category) => (
-              <label
-                key={category.id}
-                className="flex items-center space-x-2 cursor-pointer"
-              >
+            {categoryOptions.map((category) => (
+              <label key={category.id} className="flex items-center space-x-2 cursor-pointer">
                 <input
                   type="checkbox"
                   checked={filters.categories.includes(category.id)}
@@ -143,6 +175,7 @@ export default function ProductFilter({ onFilterChange }: FilterProps) {
         {/* Clear Filters */}
         {activeFilterCount > 0 && (
           <button
+            type="button"
             onClick={clearFilters}
             className="w-full flex items-center justify-center gap-2 p-2 text-sm text-walnut-600 hover:text-walnut-700 font-medium"
           >
