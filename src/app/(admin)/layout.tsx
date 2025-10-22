@@ -1,8 +1,10 @@
 // src/app/(admin)/layout.tsx
+
 import AdminSidebar from '@/components/layout/AdminSidebar'
 import AdminHeader from '@/components/layout/AdminHeader'
-import ClientSuspense from '@/components/common/ClientSuspense'
+import ClientBoundary from '@/components/ClientBoundary'
 
+// Disable SSG/ISR for the whole admin tree
 export const dynamic = 'force-dynamic'
 export const revalidate = 0
 
@@ -14,14 +16,13 @@ export default function AdminLayout({
   return (
     <div className="min-h-screen bg-natural-100 flex">
       {/* Sidebar */}
-      <ClientSuspense><AdminSidebar /></ClientSuspense>
+      <AdminSidebar />
 
       {/* Main Content */}
       <div className="flex-1 flex flex-col ml-0 lg:ml-64">
-        <ClientSuspense><AdminHeader /></ClientSuspense>
-
+        <AdminHeader />
         <main className="flex-1 p-6">
-          <ClientSuspense>{children}</ClientSuspense>
+          <ClientBoundary>{children}</ClientBoundary>
         </main>
 
         {/* Footer */}
