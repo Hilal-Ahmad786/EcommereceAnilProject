@@ -5,7 +5,6 @@
 'use client'
 
 import { useState, useCallback, useEffect } from 'react'
-import { useDebounce } from './useDebounce'
 
 export function useSearch() {
   const [query, setQuery] = useState('')

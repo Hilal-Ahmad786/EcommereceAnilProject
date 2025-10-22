@@ -1,178 +1,108 @@
-
-// ============================================
-// FILE: src/app/(admin)/admin/products/page.tsx
-// Admin Products Page with Real Data
-// ============================================
-
+// src/app/(admin)/admin/products/page.tsx
+import { auth } from "@/lib/auth"
 import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
 import { redirect } from "next/navigation"
-
-async function getProducts() {
-  return await prisma.product.findMany({
-    include: {
-      category: true
-    },
-    orderBy: { createdAt: 'desc' }
-  })
-}
-
-async function getCategories() {
-  return await prisma.category.findMany({
-    orderBy: { name: 'asc' }
-  })
-}
+import Image from "next/image"
+import Link from "next/link"
 
 export default async function AdminProductsPage() {
-  const session = await getServerSession(authOptions)
-  
-  if (!session || session.user?.role !== 'admin') {
-    redirect('/admin/login')
+  const session = await auth()
+  if (!session?.user || (session.user as any).role !== "ADMIN") {
+    redirect("/admin/login")
   }
 
-  const [products, categories] = await Promise.all([
-    getProducts(),
-    getCategories()
-  ])
+  const products = await prisma.product.findMany({
+    include: {
+      category: true,
+      images: { orderBy: { order: "asc" } },
+    },
+    orderBy: { createdAt: "desc" },
+  })
+
+  const rows = products.map((p) => ({
+    id: p.id,
+    name: p.name,
+    slug: p.slug,
+    isActive: p.isActive,
+    featured: p.featured,
+    price: Number(p.price), // <— Decimal → number
+    stock: p.stock,
+    categoryName: p.category?.name ?? "",
+    imageUrl: p.images[0]?.url ?? null,
+    createdAt: p.createdAt,
+  }))
 
   return (
-    <div>
-      <div className="flex justify-between items-center mb-6">
-        <h1 className="text-3xl font-bold text-walnut-800">Ürünler</h1>
-        <a
-          href="/admin/products/new"
-          className="bg-walnut-600 text-white px-6 py-3 rounded-lg font-semibold hover:bg-walnut-700"
+    <div className="space-y-6">
+      <div className="flex items-center justify-between">
+        <h1 className="text-2xl font-bold">Ürünler</h1>
+        <Link
+          href="/admin/urunler/yeni"
+          className="px-4 py-2 rounded-lg bg-walnut-600 text-white hover:bg-walnut-700"
         >
-          + Yeni Ürün Ekle
-        </a>
+          Yeni Ürün
+        </Link>
       </div>
 
-      {/* Stats */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-6 mb-8">
-        <div className="bg-white rounded-xl p-6 shadow">
-          <p className="text-gray-600 text-sm mb-1">Toplam Ürün</p>
-          <p className="text-3xl font-bold text-walnut-800">{products.length}</p>
-        </div>
-        <div className="bg-white rounded-xl p-6 shadow">
-          <p className="text-gray-600 text-sm mb-1">Stokta</p>
-          <p className="text-3xl font-bold text-green-600">
-            {products.filter(p => p.stock > 0).length}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-6 shadow">
-          <p className="text-gray-600 text-sm mb-1">Stok Yok</p>
-          <p className="text-3xl font-bold text-red-600">
-            {products.filter(p => p.stock === 0).length}
-          </p>
-        </div>
-        <div className="bg-white rounded-xl p-6 shadow">
-          <p className="text-gray-600 text-sm mb-1">Öne Çıkan</p>
-          <p className="text-3xl font-bold text-sage-600">
-            {products.filter(p => p.featured).length}
-          </p>
-        </div>
-      </div>
-
-      {/* Products Table */}
-      <div className="bg-white rounded-xl shadow overflow-hidden">
-        <table className="w-full">
-          <thead className="bg-gray-50 border-b">
+      <div className="bg-white border rounded-xl overflow-hidden">
+        <table className="w-full text-sm">
+          <thead className="bg-gray-50 text-gray-600">
             <tr>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                Ürün
-              </th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                Kategori
-              </th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                Fiyat
-              </th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                Stok
-              </th>
-              <th className="px-6 py-4 text-left text-sm font-semibold text-gray-700">
-                Durum
-              </th>
-              <th className="px-6 py-4 text-right text-sm font-semibold text-gray-700">
-                İşlemler
-              </th>
+              <th className="px-4 py-3 text-left">Görsel</th>
+              <th className="px-4 py-3 text-left">Ad</th>
+              <th className="px-4 py-3 text-left">Kategori</th>
+              <th className="px-4 py-3 text-right">Fiyat</th>
+              <th className="px-4 py-3 text-right">Stok</th>
+              <th className="px-4 py-3 text-center">Durum</th>
             </tr>
           </thead>
-          <tbody className="divide-y">
-            {products.map((product) => (
-              <tr key={product.id} className="hover:bg-gray-50">
-                <td className="px-6 py-4">
-                  <div className="flex items-center gap-3">
-                    <div className="w-12 h-12 bg-gray-100 rounded-lg overflow-hidden">
-                      {product.image && (
-                        <img 
-                          src={product.image} 
-                          alt={product.name}
-                          className="w-full h-full object-cover"
-                        />
-                      )}
-                    </div>
-                    <div>
-                      <p className="font-semibold text-gray-900">{product.name}</p>
-                      <p className="text-sm text-gray-500">{product.slug}</p>
-                    </div>
-                  </div>
-                </td>
-                <td className="px-6 py-4">
-                  <span className="px-3 py-1 bg-sage-100 text-sage-700 rounded-full text-sm">
-                    {product.category.name}
-                  </span>
-                </td>
-                <td className="px-6 py-4 font-semibold">
-                  {product.price.toLocaleString('tr-TR')} ₺
-                </td>
-                <td className="px-6 py-4">
-                  <span className={`font-semibold ${
-                    product.stock > 10 ? 'text-green-600' :
-                    product.stock > 0 ? 'text-yellow-600' :
-                    'text-red-600'
-                  }`}>
-                    {product.stock}
-                  </span>
-                </td>
-                <td className="px-6 py-4">
-                  {product.featured && (
-                    <span className="px-3 py-1 bg-yellow-100 text-yellow-700 rounded-full text-xs font-semibold">
-                      ⭐ Öne Çıkan
-                    </span>
+          <tbody>
+            {rows.map((product) => (
+              <tr key={product.id} className="border-t">
+                <td className="px-4 py-3">
+                  {product.imageUrl ? (
+                    <Image
+                      src={product.imageUrl}
+                      alt={product.name}
+                      width={60}
+                      height={60}
+                      className="h-14 w-14 object-cover rounded-md border"
+                    />
+                  ) : (
+                    <div className="h-14 w-14 rounded-md border bg-gray-100" />
                   )}
                 </td>
-                <td className="px-6 py-4 text-right">
-                  <div className="flex justify-end gap-2">
-                    <a
-                      href={`/admin/products/edit/${product.id}`}
-                      className="px-4 py-2 bg-blue-500 text-white rounded-lg hover:bg-blue-600 text-sm"
-                    >
-                      Düzenle
-                    </a>
-                    <button
-                      className="px-4 py-2 bg-red-500 text-white rounded-lg hover:bg-red-600 text-sm"
-                      onClick={() => {
-                        if (confirm('Bu ürünü silmek istediğinize emin misiniz?')) {
-                          // Delete handler will be added
-                        }
-                      }}
-                    >
-                      Sil
-                    </button>
-                  </div>
+                <td className="px-4 py-3">
+                  <div className="font-medium">{product.name}</div>
+                  <div className="text-gray-500 text-xs">{product.slug}</div>
+                </td>
+                <td className="px-4 py-3">{product.categoryName}</td>
+                <td className="px-4 py-3 text-right">
+                  {new Intl.NumberFormat("tr-TR").format(product.price)} ₺
+                </td>
+                <td className="px-4 py-3 text-right">{product.stock}</td>
+                <td className="px-4 py-3 text-center">
+                  <span
+                    className={`px-2 py-1 rounded text-xs ${
+                      product.isActive
+                        ? "bg-green-100 text-green-700"
+                        : "bg-gray-100 text-gray-600"
+                    }`}
+                  >
+                    {product.isActive ? "Aktif" : "Pasif"}
+                  </span>
                 </td>
               </tr>
             ))}
+            {rows.length === 0 && (
+              <tr>
+                <td className="px-4 py-8 text-center text-gray-500" colSpan={6}>
+                  Ürün bulunamadı.
+                </td>
+              </tr>
+            )}
           </tbody>
         </table>
-
-        {products.length === 0 && (
-          <div className="text-center py-12 text-gray-500">
-            Henüz ürün eklenmemiş
-          </div>
-        )}
       </div>
     </div>
   )

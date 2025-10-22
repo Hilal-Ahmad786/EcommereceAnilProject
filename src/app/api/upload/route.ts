@@ -1,18 +1,18 @@
 // src/app/api/upload/route.ts
 import { NextRequest, NextResponse } from 'next/server'
-import { uploadBlob } from '@/lib/blob'
-import { getServerSession } from 'next-auth'
-import { authOptions } from '@/lib/auth'
+import { auth } from '@/lib/auth'
+import { put, del } from '@vercel/blob'
 
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    const session = await auth()
+    const role = (session?.user as any)?.role
+    if (!session?.user || role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const formData = await request.formData()
-    const file = formData.get('file') as File
+    const file = formData.get('file') as File | null
 
     if (!file) {
       return NextResponse.json(
@@ -39,23 +39,21 @@ export async function POST(request: NextRequest) {
       )
     }
 
-    // Generate unique filename
-    const timestamp = Date.now()
-    const filename = `${timestamp}-${file.name.replace(/[^a-zA-Z0-9.-]/g, '_')}`
-    
-    // Upload to Vercel Blob
-    const arrayBuffer = await file.arrayBuffer()
-    const buffer = Buffer.from(arrayBuffer)
-    
-    const blob = await uploadBlob(filename, buffer, file.type)
+    // Unique filename
+    const filenameSafe = file.name.replace(/[^a-zA-Z0-9.-]/g, '_')
+    const filename = `uploads/${Date.now()}-${filenameSafe}`
+
+    // Upload directly to Vercel Blob
+    const result = await put(filename, file, {
+      access: 'public',
+      contentType: file.type,
+    })
 
     return NextResponse.json({
       success: true,
       data: {
-        url: blob.url,
-        pathname: blob.pathname,
-        size: blob.size,
-        uploadedAt: blob.uploadedAt,
+        url: result.url,
+        pathname: result.pathname,
       },
     })
   } catch (error) {
@@ -69,8 +67,9 @@ export async function POST(request: NextRequest) {
 
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
-    if (!session?.user || session.user.role !== 'ADMIN') {
+    const session = await auth()
+    const role = (session?.user as any)?.role
+    if (!session?.user || role !== 'ADMIN') {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -84,8 +83,7 @@ export async function DELETE(request: NextRequest) {
       )
     }
 
-    const { deleteBlob } = await import('@/lib/blob')
-    await deleteBlob(url)
+    await del(url)
 
     return NextResponse.json({
       success: true,

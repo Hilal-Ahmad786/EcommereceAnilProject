@@ -4,35 +4,33 @@ import { prisma } from '@/lib/prisma'
 import ProductDetailClient from '@/components/product/ProductDetailClient'
 
 async function getProduct(slug: string) {
-  return await prisma.product.findUnique({
+  return prisma.product.findUnique({
     where: { slug },
     include: {
       category: true,
       images: { orderBy: { order: 'asc' } },
       woodFinishes: {
-        include: { woodFinish: true }
+        include: { woodFinish: true },
       },
       reviews: {
         where: { isApproved: true },
         include: {
-          user: { select: { name: true, image: true } }
+          user: { select: { name: true, image: true } },
         },
-        orderBy: { createdAt: 'desc' }
-      }
-    }
+        orderBy: { createdAt: 'desc' },
+      },
+    },
   })
 }
 
 export default async function ProductDetailPage({
-  params
+  params,
 }: {
   params: { slug: string }
 }) {
   const product = await getProduct(params.slug)
 
-  if (!product) {
-    notFound()
-  }
+  if (!product) return notFound()
 
   // Transform data for client component
   const transformedProduct = {
@@ -42,27 +40,31 @@ export default async function ProductDetailPage({
     description: product.description,
     shortDescription: product.shortDescription || '',
     price: Number(product.price),
-    comparePrice: product.comparePrice ? Number(product.comparePrice) : undefined,
+    comparePrice: product.comparePrice != null ? Number(product.comparePrice) : undefined,
     stock: product.stock,
-    category: product.category.name,
-    images: product.images.map(img => img.url),
+    category: product.category?.name || '',
+    images: product.images.map((img) => img.url),
     dimensions: product.dimensions as any,
-    weight: product.weight ? Number(product.weight) : undefined,
+    weight: product.weight != null ? Number(product.weight) : undefined,
     weightUnit: product.weightUnit || 'kg',
-    woodFinishes: product.woodFinishes.map(wf => ({
+    woodFinishes: product.woodFinishes.map((wf) => ({
+      // keep using slug if your client expects it as an identifier
       id: wf.woodFinish.slug,
       name: wf.woodFinish.name,
       hexColor: wf.woodFinish.hexColor,
-      priceModifier: wf.priceModifier ? Number(wf.priceModifier) : 0
+      priceModifier: wf.priceModifier != null ? Number(wf.priceModifier) : 0,
     })),
-    reviews: product.reviews.map(review => ({
+    reviews: product.reviews.map((review) => ({
       id: review.id,
-      userName: review.user.name || 'Anonim',
+      userName: review.user?.name || 'Anonim',
       rating: review.rating,
-      title: review.title,
+      title: review.title ?? undefined, // fix: use the review variable you mapped
       comment: review.comment,
-      createdAt: review.createdAt.toISOString()
-    }))
+      createdAt:
+        review.createdAt instanceof Date
+          ? review.createdAt.toISOString()
+          : String(review.createdAt),
+    })),
   }
 
   return <ProductDetailClient product={transformedProduct} />

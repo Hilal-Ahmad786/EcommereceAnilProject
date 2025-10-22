@@ -1,7 +1,7 @@
 // src/app/api/categories/[id]/route.ts
 import { NextRequest, NextResponse } from 'next/server'
 import { prisma } from '@/lib/prisma'
-import { getServerSession } from 'next-auth'
+import { auth } from '@/lib/auth'
 import { authOptions } from '@/lib/auth'
 
 // GET single category
@@ -48,7 +48,7 @@ export async function PUT(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },
@@ -109,7 +109,7 @@ export async function DELETE(
   { params }: { params: { id: string } }
 ) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     if (!session?.user || session.user.role !== 'ADMIN') {
       return NextResponse.json(
         { success: false, error: 'Unauthorized' },

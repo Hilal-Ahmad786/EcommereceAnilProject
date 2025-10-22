@@ -1,17 +1,11 @@
-// ============================================
-// FILE: src/app/api/wishlist/route.ts
-// Wishlist API (clean + build-safe)
-// ============================================
-
+// src/app/api/wishlist/route.ts
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
-import { authOptions } from "@/lib/auth"
+import { auth } from "@/lib/auth"
 
-// GET - Fetch user's wishlist
 export async function GET() {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ success: false, error: "Yetkisiz erişim" }, { status: 401 })
     }
@@ -36,10 +30,9 @@ export async function GET() {
   }
 }
 
-// POST - Add to wishlist
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json(
         { success: false, error: "Favorilere eklemek için giriş yapmalısınız" },
@@ -52,14 +45,8 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({ success: false, error: "Ürün ID gerekli" }, { status: 400 })
     }
 
-    // Avoid duplicates (composite unique: userId_productId)
     const existing = await prisma.wishlistItem.findUnique({
-      where: {
-        userId_productId: {
-          userId: session.user.id,
-          productId,
-        },
-      },
+      where: { userId_productId: { userId: session.user.id, productId } },
     })
     if (existing) {
       return NextResponse.json({ success: false, error: "Ürün zaten favorilerde" }, { status: 400 })
@@ -84,10 +71,9 @@ export async function POST(request: NextRequest) {
   }
 }
 
-// DELETE - Remove from wishlist
 export async function DELETE(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     if (!session?.user?.id) {
       return NextResponse.json({ success: false, error: "Yetkisiz erişim" }, { status: 401 })
     }
@@ -99,12 +85,7 @@ export async function DELETE(request: NextRequest) {
     }
 
     await prisma.wishlistItem.delete({
-      where: {
-        userId_productId: {
-          userId: session.user.id,
-          productId,
-        },
-      },
+      where: { userId_productId: { userId: session.user.id, productId } },
     })
 
     return NextResponse.json({ success: true, message: "Favorilerden kaldırıldı" })

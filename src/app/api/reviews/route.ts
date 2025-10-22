@@ -6,7 +6,7 @@
 
 import { NextRequest, NextResponse } from "next/server"
 import { prisma } from "@/lib/prisma"
-import { getServerSession } from "next-auth"
+import { auth } from "@/lib/auth"
 import { authOptions } from "@/lib/auth"
 
 // GET - Fetch reviews
@@ -58,7 +58,7 @@ export async function GET(request: NextRequest) {
 // POST - Create new review (Authenticated users)
 export async function POST(request: NextRequest) {
   try {
-    const session = await getServerSession(authOptions)
+    const session = await auth()
     
     if (!session) {
       return NextResponse.json(

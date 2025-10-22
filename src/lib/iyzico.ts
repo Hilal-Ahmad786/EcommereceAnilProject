@@ -1,52 +1,49 @@
-import 'server-only'
-import Iyzipay from 'iyzipay'
+// src/lib/iyzico.ts
+import "server-only"
 
-const apiKey = process.env.IYZICO_API_KEY
-const secretKey = process.env.IYZICO_SECRET_KEY
-const baseUrl = process.env.IYZICO_BASE_URL || 'https://sandbox-api.iyzipay.com'
+// Use very loose types to avoid compile-time type issues with `iyzipay`
+let _client: any | null = null
 
-let iyzico: Iyzipay | null = null
+async function getClient() {
+  if (_client) return _client
 
-function getClient() {
-  if (!apiKey || !secretKey) {
-    throw new Error('IYZICO_API_KEY / IYZICO_SECRET_KEY missing in .env.local')
+  const { default: Iyzipay } = await import("iyzipay").catch(() => ({ default: null as any }))
+  if (!Iyzipay) {
+    throw new Error("iyzipay package is not installed. Run `npm i iyzipay` or disable Iyzico features.")
   }
-  if (!iyzico) {
-    iyzico = new Iyzipay({ apiKey, secretKey, uri: baseUrl })
+
+  const { IYZI_API_KEY, IYZI_SECRET_KEY, IYZI_BASE_URL } = process.env
+  if (!IYZI_API_KEY || !IYZI_SECRET_KEY || !IYZI_BASE_URL) {
+    throw new Error("Iyzico environment variables are missing. Set IYZI_API_KEY, IYZI_SECRET_KEY, IYZI_BASE_URL")
   }
-  return iyzico
+
+  _client = new Iyzipay({
+    apiKey: IYZI_API_KEY,
+    secretKey: IYZI_SECRET_KEY,
+    uri: IYZI_BASE_URL, // e.g. https://sandbox-api.iyzipay.com
+  })
+  return _client
 }
 
-// Utility to promisify Iyzipay SDK methods (which use callbacks)
-function call<T>(fn: (cb: (err: any, res: T) => void) => void): Promise<T> {
-  return new Promise<T>((resolve, reject) =>
-    fn((err, res) => (err ? reject(err) : resolve(res)))
-  )
+function callIyzi<T = any>(fn: (client: any, cb: (err: any, result: T) => void) => void): Promise<T> {
+  return new Promise(async (resolve, reject) => {
+    try {
+      const client = await getClient()
+      fn(client, (err, result) => (err ? reject(err) : resolve(result)))
+    } catch (e) {
+      reject(e)
+    }
+  })
 }
 
-/**
- * Initialize a non-3D payment (for basic flow / staging).
- * For production, prefer 3DS or CheckoutForm initialize & callback.
- */
-export async function createPayment(payload: Iyzipay.CreatePaymentRequest) {
-  const client = getClient()
-  return call<Iyzipay.Payment>((cb) => client.payment.create(payload, cb))
+export async function createPayment(payload: any) {
+  return callIyzi((client, cb) => client.payment.create(payload, cb))
 }
 
-/** Initialize a hosted checkout form (recommended) */
-export async function initializeCheckoutForm(
-  payload: Iyzipay.CheckoutFormInitializeRequest
-) {
-  const client = getClient()
-  return call<Iyzipay.CheckoutFormInitialize>((cb) =>
-    client.checkoutFormInitialize.create(payload, cb)
-  )
+export async function initializeCheckoutForm(payload: any) {
+  return callIyzi((client, cb) => client.checkoutFormInitialize.create(payload, cb))
 }
 
-/** Retrieve checkout form result by token (callback step) */
-export async function retrieveCheckoutForm(token: string) {
-  const client = getClient()
-  return call<Iyzipay.CheckoutForm>((cb) =>
-    client.checkoutForm.retrieve({ token }, cb)
-  )
+export async function retrieveCheckoutForm(payload: any) {
+  return callIyzi((client, cb) => client.checkoutForm.retrieve(payload, cb))
 }

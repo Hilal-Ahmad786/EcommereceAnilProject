@@ -1,5 +1,6 @@
+// src/lib/blob.ts
 import 'server-only'
-import { put, del, list } from '@vercel/blob'
+import { put, del, list, type PutBlobResult } from '@vercel/blob'
 
 const BLOB_TOKEN = process.env.BLOB_READ_WRITE_TOKEN
 
@@ -9,25 +10,42 @@ function assertToken() {
   }
 }
 
+/**
+ * Convert Buffer | ArrayBuffer | Blob to a Blob.
+ * We copy Node Buffers into a fresh ArrayBuffer so TS narrows away SharedArrayBuffer.
+ */
+function toBlob(data: Blob | ArrayBuffer | Buffer, contentType?: string): Blob {
+  if (data instanceof Blob) {
+    return data
+  }
+
+  if (typeof ArrayBuffer !== 'undefined' && data instanceof ArrayBuffer) {
+    // Wrap in a Uint8Array to ensure valid BlobPart
+    return new Blob([new Uint8Array(data)], { type: contentType })
+  }
+
+  // Node Buffer case
+  const buf = data as Buffer
+  // Copy into a regular ArrayBuffer (avoids SharedArrayBuffer in typings)
+  const view = new Uint8Array(buf.buffer, buf.byteOffset, buf.byteLength)
+  const copy = new Uint8Array(view.byteLength)
+  copy.set(view)
+  return new Blob([copy], { type: contentType })
+}
+
 /** Upload a public image/file and get a CDN URL back */
 export async function uploadBlob(
   filename: string,
   data: Blob | ArrayBuffer | Buffer,
   contentType?: string
-) {
+): Promise<PutBlobResult> {
   assertToken()
-  const body =
-    data instanceof Blob
-      ? data
-      : new Blob([data as Buffer | ArrayBuffer], { type: contentType })
-
-  const res = await put(filename, body, {
+  const body = toBlob(data, contentType)
+  return put(filename, body, {
     access: 'public',
     token: BLOB_TOKEN,
     contentType,
   })
-  // res: { url, pathname, size, uploadedAt, ... }
-  return res
 }
 
 /** Delete by blob URL or pathname */
@@ -40,5 +58,5 @@ export async function deleteBlob(pathOrUrl: string) {
 export async function listBlobs(prefix?: string) {
   assertToken()
   const res = await list({ token: BLOB_TOKEN, prefix })
-  return res.blobs // array with {pathname, size, uploadedAt, url?}
+  return res.blobs // { pathname, size, uploadedAt, url? }[]
 }
