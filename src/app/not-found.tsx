@@ -1,18 +1,23 @@
+// src/app/not-found.tsx
 import Link from 'next/link'
+
+export const dynamic = 'force-dynamic'
+export const revalidate = 0
 
 export default function NotFound() {
   return (
-    <div className="flex min-h-screen flex-col items-center justify-center">
-      <h1 className="text-6xl font-bold text-walnut-500 mb-4">404</h1>
-      <h2 className="text-2xl font-semibold mb-4">Sayfa Bulunamadı</h2>
-      <p className="text-muted-foreground mb-8">
+    <div className="container mx-auto px-4 py-20">
+      <h1 className="text-3xl md:text-4xl font-bold text-walnut-700 mb-2">
+        Sayfa bulunamadı
+      </h1>
+      <p className="text-muted-foreground mb-6">
         Aradığınız sayfa mevcut değil veya taşınmış olabilir.
       </p>
       <Link
         href="/"
-        className="px-6 py-3 bg-walnut-500 text-white rounded-lg hover:bg-walnut-600 transition-colors"
+        className="inline-block px-4 py-2 rounded-lg border font-medium hover:bg-muted"
       >
-        Ana Sayfaya Dön
+        Anasayfaya dön
       </Link>
     </div>
   )
