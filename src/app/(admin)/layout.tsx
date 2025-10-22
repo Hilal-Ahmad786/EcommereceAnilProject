@@ -1,3 +1,5 @@
+// src/app/(admin)/layout.tsx
+import { Suspense } from 'react'
 import AdminSidebar from '@/components/layout/AdminSidebar'
 import AdminHeader from '@/components/layout/AdminHeader'
 
@@ -15,9 +17,9 @@ export default function AdminLayout({
       <div className="flex-1 flex flex-col ml-0 lg:ml-64">
         <AdminHeader />
         <main className="flex-1 p-6">
-          {children}
+          <Suspense fallback={null}>{children}</Suspense>
         </main>
-        
+
         {/* Footer */}
         <footer className="p-4 text-center text-sm text-muted-foreground border-t bg-white">
           © 2024 Mutfak Mobilya Admin Panel • Developed by{' '}

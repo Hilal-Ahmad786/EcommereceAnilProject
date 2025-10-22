@@ -1,3 +1,5 @@
+// src/app/(main)/layout.tsx
+import { Suspense } from 'react'
 import TopBar from '@/components/layout/TopBar'
 import Header from '@/components/layout/Header'
 import Footer from '@/components/layout/Footer'
@@ -12,7 +14,9 @@ export default function MainLayout({
     <div className="min-h-screen flex flex-col">
       <TopBar />
       <Header />
-      <main className="flex-1">{children}</main>
+      <main className="flex-1">
+        <Suspense fallback={null}>{children}</Suspense>
+      </main>
       <Footer />
       <FloatingButtons />
     </div>
