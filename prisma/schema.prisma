@@ -5,8 +5,290 @@ generator client {
 datasource db {
   provider     = "postgresql"
   url          = env("DATABASE_URL")
-  directUrl    = env("DIRECT_URL") // <-- Prisma will use this for db push/migrate
+  directUrl    = env("DIRECT_URL")
   relationMode = "prisma"
+}
+
+model User {
+  id            String         @id @default(cuid())
+  email         String         @unique
+  name          String?
+  password      String?
+  role          Role           @default(CUSTOMER)
+  emailVerified DateTime?
+  image         String?
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  accounts      Account[]
+  sessions      Session[]
+  orders        Order[]
+  reviews       Review[]
+  addresses     Address[]
+  wishlist      WishlistItem[]
+  blogPosts     BlogPost[]
+}
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+  user              User    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+  user         User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+model Address {
+  id           String   @id @default(cuid())
+  userId       String
+  title        String
+  fullName     String
+  phone        String
+  city         String
+  district     String
+  neighborhood String?
+  addressLine  String
+  postalCode   String?
+  isDefault    Boolean  @default(false)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  user         User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  orders       Order[]
+}
+
+model Category {
+  id          String     @id @default(cuid())
+  slug        String     @unique
+  name        String
+  description String?
+  image       String?
+  parentId    String?
+  order       Int        @default(0)
+  createdAt   DateTime   @default(now())
+  updatedAt   DateTime   @updatedAt
+  parent      Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  children    Category[] @relation("CategoryHierarchy")
+  products    Product[]
+  seo         SEO?
+}
+
+model Product {
+  id                String              @id @default(cuid())
+  slug              String              @unique
+  name              String
+  description       String
+  shortDescription  String?
+  price             Decimal             @db.Decimal(10, 2)
+  comparePrice      Decimal?            @db.Decimal(10, 2)
+  stock             Int                 @default(0)
+  lowStockThreshold Int                 @default(5)
+  sku               String?             @unique
+  barcode           String?
+  dimensions        Json?
+  weight            Decimal?            @db.Decimal(8, 2)
+  weightUnit        String?             @default("kg")
+  featured          Boolean             @default(false)
+  isActive          Boolean             @default(true)
+  categoryId        String
+  createdAt         DateTime            @default(now())
+  updatedAt         DateTime            @updatedAt
+  category          Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  images            ProductImage[]
+  woodFinishes      ProductWoodFinish[]
+  reviews           Review[]
+  orderItems        OrderItem[]
+  wishlistItems     WishlistItem[]
+  seo               SEO?
+
+  @@index([categoryId])
+  @@index([slug])
+}
+
+model ProductImage {
+  id        String  @id @default(cuid())
+  productId String
+  url       String
+  alt       String?
+  order     Int     @default(0)
+  product   Product @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([productId])
+}
+
+model WoodFinish {
+  id          String              @id @default(cuid())
+  name        String              @unique
+  slug        String              @unique
+  hexColor    String
+  textureUrl  String?
+  description String?
+  createdAt   DateTime            @default(now())
+  products    ProductWoodFinish[]
+}
+
+model ProductWoodFinish {
+  id            String     @id @default(cuid())
+  productId     String
+  woodFinishId  String
+  priceModifier Decimal?   @db.Decimal(10, 2)
+  product       Product    @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  woodFinish    WoodFinish @relation(fields: [woodFinishId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([productId, woodFinishId])
+}
+
+model Order {
+  id             String        @id @default(cuid())
+  orderNumber    String        @unique
+  status         OrderStatus   @default(PENDING)
+  userId         String
+  addressId      String
+  subtotal       Decimal       @db.Decimal(10, 2)
+  shippingCost   Decimal       @default(0) @db.Decimal(10, 2)
+  tax            Decimal       @default(0) @db.Decimal(10, 2)
+  discount       Decimal       @default(0) @db.Decimal(10, 2)
+  total          Decimal       @db.Decimal(10, 2)
+  paymentMethod  PaymentMethod
+  paymentStatus  PaymentStatus @default(PENDING)
+  paymentId      String?
+  trackingNumber String?
+  shippedAt      DateTime?
+  deliveredAt    DateTime?
+  customerNote   String?
+  adminNote      String?
+  createdAt      DateTime      @default(now())
+  updatedAt      DateTime      @updatedAt
+  user           User          @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  address        Address       @relation(fields: [addressId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  items          OrderItem[]
+
+  @@index([userId])
+  @@index([orderNumber])
+}
+
+model OrderItem {
+  id             String  @id @default(cuid())
+  orderId        String
+  productId      String
+  productName    String
+  productImage   String?
+  woodFinishName String?
+  quantity       Int
+  unitPrice      Decimal @db.Decimal(10, 2)
+  totalPrice     Decimal @db.Decimal(10, 2)
+  order          Order   @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  product        Product @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@index([orderId])
+}
+
+model Review {
+  id         String   @id @default(cuid())
+  productId  String
+  userId     String
+  rating     Int
+  title      String?
+  comment    String
+  isApproved Boolean  @default(false)
+  createdAt  DateTime @default(now())
+  updatedAt  DateTime @updatedAt
+  product    Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  user       User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([productId, userId])
+  @@index([productId])
+}
+
+model WishlistItem {
+  id        String   @id @default(cuid())
+  userId    String
+  productId String
+  createdAt DateTime @default(now())
+  user      User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  product   Product  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+
+  @@unique([userId, productId])
+  @@index([userId])
+}
+
+model BlogPost {
+  id          String    @id @default(cuid())
+  slug        String    @unique
+  title       String
+  excerpt     String?
+  content     String
+  coverImage  String?
+  authorId    String
+  published   Boolean   @default(false)
+  publishedAt DateTime?
+  createdAt   DateTime  @default(now())
+  updatedAt   DateTime  @updatedAt
+  author      User      @relation(fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  seo         SEO?
+
+  @@index([slug])
+}
+
+model SEO {
+  id              String    @id @default(cuid())
+  metaTitle       String
+  metaDescription String
+  keywords        String?
+  ogTitle         String?
+  ogDescription   String?
+  ogImage         String?
+  canonicalUrl    String?
+  productId       String?   @unique
+  categoryId      String?   @unique
+  blogPostId      String?   @unique
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+  product         Product?  @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  category        Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+  blogPost        BlogPost? @relation(fields: [blogPostId], references: [id], onDelete: Restrict, onUpdate: Restrict)
+}
+
+model SiteSetting {
+  id          String   @id @default(cuid())
+  key         String   @unique
+  value       String
+  type        String   @default("text")
+  group       String   @default("general")
+  description String?
+  updatedAt   DateTime @updatedAt
+}
+
+model NewsletterSubscriber {
+  id        String   @id @default(cuid())
+  email     String   @unique
+  isActive  Boolean  @default(true)
+  source    String?
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
 
 enum Role {
@@ -35,322 +317,4 @@ enum PaymentStatus {
   COMPLETED
   FAILED
   REFUNDED
-}
-
-model User {
-  id            String    @id @default(cuid())
-  email         String    @unique
-  name          String?
-  password      String?
-  role          Role      @default(CUSTOMER)
-  emailVerified DateTime?
-  image         String?
-
-  accounts  Account[]
-  sessions  Session[]
-  orders    Order[]
-  reviews   Review[]
-  addresses Address[]
-  wishlist  WishlistItem[]
-  blogPosts BlogPost[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Account {
-  id                String  @id @default(cuid())
-  userId            String
-  type              String
-  provider          String
-  providerAccountId String
-  refresh_token     String? @db.Text
-  access_token      String? @db.Text
-  expires_at        Int?
-  token_type        String?
-  scope             String?
-  id_token          String? @db.Text
-  session_state     String?
-
-  user User @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  @@unique([provider, providerAccountId])
-}
-
-model Session {
-  id           String   @id @default(cuid())
-  sessionToken String   @unique
-  userId       String
-  expires      DateTime
-  user         User     @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-}
-
-model VerificationToken {
-  identifier String
-  token      String   @unique
-  expires    DateTime
-
-  @@unique([identifier, token])
-}
-
-model Address {
-  id           String  @id @default(cuid())
-  userId       String
-  title        String
-  fullName     String
-  phone        String
-  city         String
-  district     String
-  neighborhood String?
-  addressLine  String  @db.Text
-  postalCode   String?
-  isDefault    Boolean @default(false)
-
-  user   User    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  orders Order[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Category {
-  id          String  @id @default(cuid())
-  slug        String  @unique
-  name        String
-  description String? @db.Text
-  image       String?
-  parentId    String?
-  order       Int     @default(0)
-
-  parent   Category?  @relation("CategoryHierarchy", fields: [parentId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  children Category[] @relation("CategoryHierarchy")
-  products Product[]
-  seo      SEO?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model Product {
-  id                String   @id @default(cuid())
-  slug              String   @unique
-  name              String
-  description       String   @db.Text
-  shortDescription  String?  @db.Text
-  price             Decimal  @db.Decimal(10, 2)
-  comparePrice      Decimal? @db.Decimal(10, 2)
-  stock             Int      @default(0)
-  lowStockThreshold Int      @default(5)
-  sku               String?  @unique
-  barcode           String?
-  dimensions        Json?
-  weight            Decimal? @db.Decimal(8, 2)
-  weightUnit        String?  @default("kg")
-  featured          Boolean  @default(false)
-  isActive          Boolean  @default(true)
-
-  categoryId    String
-  category      Category            @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  images        ProductImage[]
-  woodFinishes  ProductWoodFinish[]
-  reviews       Review[]
-  orderItems    OrderItem[]
-  wishlistItems WishlistItem[]
-  seo           SEO?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([categoryId])
-  @@index([slug])
-}
-
-model ProductImage {
-  id        String  @id @default(cuid())
-  productId String
-  url       String
-  alt       String?
-  order     Int     @default(0)
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  @@index([productId])
-}
-
-model WoodFinish {
-  id          String  @id @default(cuid())
-  name        String  @unique
-  slug        String  @unique
-  hexColor    String
-  textureUrl  String?
-  description String?
-
-  products ProductWoodFinish[]
-
-  createdAt DateTime @default(now())
-}
-
-model ProductWoodFinish {
-  id            String   @id @default(cuid())
-  productId     String
-  woodFinishId  String
-  priceModifier Decimal? @db.Decimal(10, 2)
-
-  product    Product    @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  woodFinish WoodFinish @relation(fields: [woodFinishId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  @@unique([productId, woodFinishId])
-}
-
-model Order {
-  id          String      @id @default(cuid())
-  orderNumber String      @unique
-  status      OrderStatus @default(PENDING)
-
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  addressId String
-  address   Address @relation(fields: [addressId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  subtotal     Decimal @db.Decimal(10, 2)
-  shippingCost Decimal @default(0) @db.Decimal(10, 2)
-  tax          Decimal @default(0) @db.Decimal(10, 2)
-  discount     Decimal @default(0) @db.Decimal(10, 2)
-  total        Decimal @db.Decimal(10, 2)
-
-  paymentMethod PaymentMethod
-  paymentStatus PaymentStatus @default(PENDING)
-  paymentId     String?
-
-  items OrderItem[]
-
-  trackingNumber String?
-  shippedAt      DateTime?
-  deliveredAt    DateTime?
-
-  customerNote String? @db.Text
-  adminNote    String? @db.Text
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([userId])
-  @@index([orderNumber])
-}
-
-model OrderItem {
-  id        String @id @default(cuid())
-  orderId   String
-  productId String
-
-  productName    String
-  productImage   String?
-  woodFinishName String?
-
-  quantity   Int
-  unitPrice  Decimal @db.Decimal(10, 2)
-  totalPrice Decimal @db.Decimal(10, 2)
-
-  order   Order   @relation(fields: [orderId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  @@index([orderId])
-}
-
-model Review {
-  id         String  @id @default(cuid())
-  productId  String
-  userId     String
-  rating     Int
-  title      String?
-  comment    String  @db.Text
-  isApproved Boolean @default(false)
-
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@unique([productId, userId])
-  @@index([productId])
-}
-
-model WishlistItem {
-  id        String @id @default(cuid())
-  userId    String
-  productId String
-
-  user    User    @relation(fields: [userId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  product Product @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  createdAt DateTime @default(now())
-
-  @@unique([userId, productId])
-  @@index([userId])
-}
-
-model BlogPost {
-  id          String    @id @default(cuid())
-  slug        String    @unique
-  title       String
-  excerpt     String?   @db.Text
-  content     String    @db.Text
-  coverImage  String?
-  authorId    String
-  published   Boolean   @default(false)
-  publishedAt DateTime?
-
-  author User @relation(fields: [authorId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-  seo    SEO?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([slug])
-}
-
-model SEO {
-  id              String  @id @default(cuid())
-  metaTitle       String
-  metaDescription String  @db.Text
-  keywords        String? @db.Text
-  ogTitle         String?
-  ogDescription   String? @db.Text
-  ogImage         String?
-  canonicalUrl    String?
-
-  productId String?  @unique
-  product   Product? @relation(fields: [productId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  categoryId String?   @unique
-  category   Category? @relation(fields: [categoryId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  blogPostId String?   @unique
-  blogPost   BlogPost? @relation(fields: [blogPostId], references: [id], onDelete: Restrict, onUpdate: Restrict)
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-}
-
-model SiteSetting {
-  id          String  @id @default(cuid())
-  key         String  @unique
-  value       String  @db.Text
-  type        String  @default("text")
-  group       String  @default("general")
-  description String?
-
-  updatedAt DateTime @updatedAt
-}
-
-model NewsletterSubscriber {
-  id       String  @id @default(cuid())
-  email    String  @unique
-  isActive Boolean @default(true)
-  source   String?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 }

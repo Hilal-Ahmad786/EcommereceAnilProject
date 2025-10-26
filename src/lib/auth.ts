@@ -5,6 +5,9 @@ import bcrypt from "bcryptjs"
 import { prisma } from "@/lib/prisma"
 import { type Role } from "@prisma/client"
 
+// =============================
+// 🔐 NEXTAUTH CONFIG
+// =============================
 export const authOptions: NextAuthConfig = {
   providers: [
     Credentials({
@@ -25,7 +28,7 @@ export const authOptions: NextAuthConfig = {
         const ok = await bcrypt.compare(password, user.password)
         if (!ok) return null
 
-        // This object becomes `user` in JWT callback on first login
+        // ✅ Return essential user info
         return {
           id: user.id,
           email: user.email,
@@ -37,35 +40,51 @@ export const authOptions: NextAuthConfig = {
     }),
   ],
 
-  session: { strategy: "jwt", maxAge: 30 * 24 * 60 * 60 },
-  pages: { signIn: "/admin/login" },
+  // =============================
+  // 🧭 SESSION / JWT BEHAVIOR
+  // =============================
+  session: {
+    strategy: "jwt",
+    maxAge: 30 * 24 * 60 * 60, // 30 days
+  },
+  pages: {
+    signIn: "/admin/login",
+  },
 
+  // =============================
+  // ⚙️ CALLBACKS
+  // =============================
   callbacks: {
+    // Persist user data into the JWT at sign in
     async jwt({ token, user }) {
-      // Persist user props into the token at sign in
       if (user) {
         token.id = (user as any).id
         token.role = (user as any).role
+        token.email = (user as any).email
+        token.name = (user as any).name
       }
       return token
     },
+
+    // Expose token data inside session.user
     async session({ session, token }) {
-      // Expose token props on the session
-      if (session.user) {
-        ;(session.user as any).id = token.id as string
-        ;(session.user as any).role = token.role as Role
-      }
+      if (!session.user) session.user = {} as any
+      ;(session.user as any).id = token.id as string
+      ;(session.user as any).role = token.role as Role
+      ;(session.user as any).email = token.email
+      ;(session.user as any).name = token.name
       return session
     },
   },
 
+  // =============================
+  // ⚙️ GENERAL SETTINGS
+  // =============================
   secret: process.env.NEXTAUTH_SECRET,
-  // Recommended on Vercel to trust the Host header
   trustHost: true,
 }
 
-// Helpers for app router:
-// - `auth()` for server-side session
-// - `handlers` for /api/auth/[...nextauth]/route.ts
-// - `signIn` / `signOut` utilities
+// =============================
+// 🔧 EXPORT HELPERS
+// =============================
 export const { handlers, auth, signIn, signOut } = NextAuth(authOptions)

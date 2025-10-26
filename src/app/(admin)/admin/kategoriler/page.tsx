@@ -1,7 +1,10 @@
 // src/app/(admin)/admin/kategoriler/page.tsx
 import { prisma } from "@/lib/prisma"
 import Link from "next/link"
-import { Plus, Edit } from "lucide-react"
+import { Plus, Edit, Trash2 } from "lucide-react"
+import { revalidatePath } from "next/cache"
+import DeleteCategoryButton from "@/components/admin/DeleteCategoryButton"
+
 
 export const dynamic = "force-dynamic"
 
@@ -13,6 +16,25 @@ async function getCategories() {
     },
     orderBy: [{ parentId: "asc" }, { order: "asc" }, { name: "asc" }],
   })
+}
+
+// ------- Server Action: delete a category securely -------
+async function deleteCategoryAction(id: string) {
+  "use server"
+  // Make sure category exists and has no products
+  const cat = await prisma.category.findUnique({
+    where: { id },
+    include: { _count: { select: { products: true } } },
+  })
+  if (!cat) {
+    throw new Error("Kategori bulunamadı")
+  }
+  if (cat._count.products > 0) {
+    throw new Error("Bu kategoride ürünler var. Önce ürünleri başka kategoriye taşıyın.")
+  }
+
+  await prisma.category.delete({ where: { id } })
+  revalidatePath("/admin/kategoriler")
 }
 
 export default async function AdminCategoriesPage() {
@@ -60,13 +82,18 @@ export default async function AdminCategoriesPage() {
                   <td className="px-6 py-4 text-sm">{c._count.children}</td>
                   <td className="px-6 py-4">
                     <div className="flex items-center justify-end gap-2">
+                      {/* Edit (duzenle) */}
                       <Link
-                        href={`/admin/kategoriler/yeni?parentId=${c.id}`}
+                        href={`/admin/kategoriler/duzenle/${c.id}`}
                         className="p-2 hover:bg-natural-100 rounded-lg transition-colors"
-                        title="Alt kategori ekle"
+                        title="Düzenle"
                       >
                         <Edit className="h-4 w-4 text-walnut-600" />
                       </Link>
+
+                      {/* Delete with server action */}
+                      <DeleteCategoryButton id={c.id} />
+
                     </div>
                   </td>
                 </tr>

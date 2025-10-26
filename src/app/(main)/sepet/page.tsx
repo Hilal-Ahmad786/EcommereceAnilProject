@@ -75,9 +75,9 @@ export default function CartPage() {
               total={totalPrice}
             />
 
-            {/* Checkout Button */}
+            {/* ✅ Checkout Button → now points to /checkout */}
             <Link
-              href="/odeme"
+              href="/checkout"
               className="block w-full bg-walnut-500 hover:bg-walnut-600 text-white text-center py-4 rounded-lg font-semibold transition-colors"
             >
               Ödemeye Geç

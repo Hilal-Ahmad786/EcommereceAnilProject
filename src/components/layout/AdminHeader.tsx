@@ -1,34 +1,34 @@
+// src/components/layout/AdminHeader.tsx
+
 'use client'
 
-import { Bell, User, LogOut, Menu } from 'lucide-react'
+import { Bell, User, LogOut, Menu, X } from 'lucide-react'
+import { useAdminUiStore } from '@/store/adminUiStore'
 
 export default function AdminHeader() {
-  // TODO: Get user from session
-  const user = {
-    name: 'Admin',
-    email: 'admin@mutfakmobilya.com',
-  }
+  const { sidebarOpen, toggleSidebar } = useAdminUiStore()
+
+  const user = { name: 'Admin', email: 'admin@mutfakmobilya.com' }
 
   return (
     <header className="h-16 bg-white border-b flex items-center justify-between px-6">
       {/* Mobile Menu Toggle */}
-      <button className="lg:hidden p-2 hover:bg-natural-100 rounded-lg">
-        <Menu className="h-6 w-6" />
+      <button
+        onClick={toggleSidebar}
+        aria-label="Toggle menu"
+        className="lg:hidden p-2 hover:bg-natural-100 rounded-lg"
+      >
+        {sidebarOpen ? <X className="h-6 w-6" /> : <Menu className="h-6 w-6" />}
       </button>
 
-      <div className="flex-1" />
+      <div className="font-semibold text-walnut-700">Yönetim Paneli</div>
 
-      {/* Right Actions */}
-      <div className="flex items-center gap-4">
-        {/* Notifications */}
-        <button className="relative p-2 hover:bg-natural-100 rounded-lg transition-colors">
+      <div className="flex items-center gap-2">
+        <button className="p-2 hover:bg-natural-100 rounded-lg">
           <Bell className="h-5 w-5" />
-          <span className="absolute top-1 right-1 w-2 h-2 bg-red-500 rounded-full"></span>
         </button>
-
-        {/* User Menu */}
-        <div className="flex items-center gap-3">
-          <div className="hidden md:block text-right">
+        <div className="hidden sm:flex items-center gap-2 px-2 py-1 rounded-lg">
+          <div>
             <p className="text-sm font-medium">{user.name}</p>
             <p className="text-xs text-muted-foreground">{user.email}</p>
           </div>
@@ -36,8 +36,6 @@ export default function AdminHeader() {
             <User className="h-5 w-5 text-walnut-600" />
           </button>
         </div>
-
-        {/* Logout */}
         <button className="p-2 hover:bg-red-50 text-red-600 rounded-lg transition-colors">
           <LogOut className="h-5 w-5" />
         </button>

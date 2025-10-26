@@ -1,26 +1,54 @@
 // src/app/(admin)/admin/urunler/page.tsx
-import { prisma } from "@/lib/prisma"
+
+'use client'
+
+import { useRouter } from "next/navigation"
+import { useState } from "react"
 import Link from "next/link"
 import { Plus, Edit, Trash2, Eye } from "lucide-react"
 
 export const dynamic = "force-dynamic"
 
 async function getProducts() {
-  return prisma.product.findMany({
-    include: {
-      category: true,
-      images: { take: 1, orderBy: { order: "asc" } },
-    },
-    orderBy: { createdAt: "desc" },
-  })
+  const res = await fetch("/api/products?limit=9999", { cache: "no-store" })
+  const json = await res.json()
+  return json?.data ?? []
 }
 
-export default async function AdminProductsPage() {
-  const products = await getProducts()
+export default function AdminProductsPage() {
+  const router = useRouter()
+  const [products, setProducts] = useState<any[]>([])
+  const [loading, setLoading] = useState(false)
+
+  // Fetch products on mount
+  useState(() => {
+    ;(async () => {
+      const data = await getProducts()
+      setProducts(data)
+    })()
+  })
 
   const inStock = products.filter((p) => p.stock > 0).length
   const outOfStock = products.filter((p) => p.stock === 0).length
   const featuredCount = products.filter((p) => p.featured).length
+
+  const handleDelete = async (id: string) => {
+    if (!confirm("Bu ürünü silmek istediğinizden emin misiniz?")) return
+    setLoading(true)
+    try {
+      const res = await fetch(`/api/products/${id}`, { method: "DELETE" })
+      if (!res.ok) throw new Error("Ürün silinemedi")
+
+      alert("✅ Ürün başarıyla silindi")
+      setProducts((prev) => prev.filter((p) => p.id !== id))
+      router.refresh()
+    } catch (err) {
+      console.error(err)
+      alert("❌ Bir hata oluştu, ürün silinemedi.")
+    } finally {
+      setLoading(false)
+    }
+  }
 
   return (
     <div className="space-y-6">
@@ -79,7 +107,7 @@ export default async function AdminProductsPage() {
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
                       <div className="w-12 h-12 bg-natural-100 rounded-lg flex-shrink-0 overflow-hidden">
-                        {product.images[0]?.url ? (
+                        {product.images?.[0]?.url ? (
                           <img
                             src={product.images[0].url}
                             alt={product.name}
@@ -140,10 +168,16 @@ export default async function AdminProductsPage() {
                       <Link
                         href={`/admin/urunler/duzenle/${product.id}`}
                         className="p-2 hover:bg-natural-100 rounded-lg transition-colors"
+                        title="Düzenle"
                       >
                         <Edit className="h-4 w-4 text-walnut-600" />
                       </Link>
-                      <button className="p-2 hover:bg-red-50 rounded-lg transition-colors">
+                      <button
+                        onClick={() => handleDelete(product.id)}
+                        disabled={loading}
+                        className="p-2 hover:bg-red-50 rounded-lg transition-colors disabled:opacity-50"
+                        title="Sil"
+                      >
                         <Trash2 className="h-4 w-4 text-red-600" />
                       </button>
                     </div>

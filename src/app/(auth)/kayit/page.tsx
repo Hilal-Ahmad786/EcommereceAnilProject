@@ -1,3 +1,5 @@
+// src/app/(auth)/kayit/page.tsx
+
 'use client'
 
 import { useState } from 'react'
@@ -16,11 +18,13 @@ export default function RegisterPage() {
   })
   const [isLoading, setIsLoading] = useState(false)
   const [error, setError] = useState('')
+  const [success, setSuccess] = useState('')
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
     setIsLoading(true)
     setError('')
+    setSuccess('')
 
     if (formData.password !== formData.confirmPassword) {
       setError('Şifreler eşleşmiyor')
@@ -29,12 +33,28 @@ export default function RegisterPage() {
     }
 
     try {
-      // TODO: Implement registration API
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      
-      router.push('/giris')
-    } catch (err) {
-      setError('Kayıt sırasında bir hata oluştu')
+      const res = await fetch('/api/auth/register', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          name: formData.name,
+          email: formData.email,
+          password: formData.password,
+          phone: formData.phone,
+        }),
+      })
+
+      const data = await res.json()
+
+      if (!res.ok) {
+        throw new Error(data?.error || 'Kayıt sırasında bir hata oluştu')
+      }
+
+      setSuccess('✅ Kayıt başarılı! Giriş sayfasına yönlendiriliyorsunuz...')
+      setTimeout(() => router.push('/giris'), 2000)
+    } catch (err: any) {
+      console.error('Register error:', err)
+      setError(err.message || 'Kayıt sırasında bir hata oluştu')
     } finally {
       setIsLoading(false)
     }
@@ -72,12 +92,15 @@ export default function RegisterPage() {
                 {error}
               </div>
             )}
+            {success && (
+              <div className="bg-green-50 text-green-700 p-3 rounded-lg text-sm">
+                {success}
+              </div>
+            )}
 
             {/* Name */}
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Ad Soyad
-              </label>
+              <label className="block text-sm font-medium mb-2">Ad Soyad</label>
               <div className="relative">
                 <User className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
@@ -95,9 +118,7 @@ export default function RegisterPage() {
 
             {/* Email */}
             <div>
-              <label className="block text-sm font-medium mb-2">
-                E-posta Adresi
-              </label>
+              <label className="block text-sm font-medium mb-2">E-posta Adresi</label>
               <div className="relative">
                 <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
@@ -115,9 +136,7 @@ export default function RegisterPage() {
 
             {/* Phone */}
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Telefon
-              </label>
+              <label className="block text-sm font-medium mb-2">Telefon</label>
               <div className="relative">
                 <Phone className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
@@ -126,7 +145,6 @@ export default function RegisterPage() {
                   onChange={(e) =>
                     setFormData({ ...formData, phone: e.target.value })
                   }
-                  required
                   className="w-full pl-10 pr-4 py-3 border rounded-lg focus:outline-none focus:ring-2 focus:ring-walnut-500"
                   placeholder="05XX XXX XX XX"
                 />
@@ -135,9 +153,7 @@ export default function RegisterPage() {
 
             {/* Password */}
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Şifre
-              </label>
+              <label className="block text-sm font-medium mb-2">Şifre</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input
@@ -156,9 +172,7 @@ export default function RegisterPage() {
 
             {/* Confirm Password */}
             <div>
-              <label className="block text-sm font-medium mb-2">
-                Şifre Tekrar
-              </label>
+              <label className="block text-sm font-medium mb-2">Şifre Tekrar</label>
               <div className="relative">
                 <Lock className="absolute left-3 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
                 <input

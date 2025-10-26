@@ -1,9 +1,12 @@
+//  src/app/(auth)/giris/page.tsx
+
 'use client'
 
 import { useState } from 'react'
 import Link from 'next/link'
 import { useRouter } from 'next/navigation'
 import { Mail, Lock } from 'lucide-react'
+import { signIn } from 'next-auth/react'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -18,13 +21,20 @@ export default function LoginPage() {
     setError('')
 
     try {
-      // TODO: Implement NextAuth login
-      await new Promise((resolve) => setTimeout(resolve, 1000))
-      
-      // Simulate successful login
-      router.push('/hesabim')
+      const res = await signIn('credentials', {
+        redirect: false,
+        email,
+        password,
+      })
+
+      if (res?.ok) {
+        router.push('/hesabim')
+      } else {
+        setError('E-posta veya şifre hatalı')
+      }
     } catch (err) {
-      setError('E-posta veya şifre hatalı')
+      console.error('Login error:', err)
+      setError('Bir hata oluştu, lütfen tekrar deneyin')
     } finally {
       setIsLoading(false)
     }
