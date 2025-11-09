@@ -1,15 +1,16 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import Image from 'next/image'  
 
 export default function FeaturedProducts() {
   // TODO: Fetch from database
-  const featuredProducts = [
+const featuredProducts = [
     {
       id: '1',
       name: 'Modern Mutfak Dolabı',
       price: 12999,
       comparePrice: 15999,
-      image: '/images/placeholder.jpg',
+      image: '/images/Featured/1.png',  // ← Changed
       slug: 'modern-mutfak-dolabi',
     },
     {
@@ -17,7 +18,7 @@ export default function FeaturedProducts() {
       name: 'Ahşap Mutfak Adası',
       price: 24999,
       comparePrice: null,
-      image: '/images/placeholder.jpg',
+      image: '/images/Featured/2.png',  // ← Changed
       slug: 'ahsap-mutfak-adasi',
     },
     {
@@ -25,7 +26,7 @@ export default function FeaturedProducts() {
       name: 'Mermer Tezgah',
       price: 18999,
       comparePrice: 21999,
-      image: '/images/placeholder.jpg',
+      image: '/images/Featured/3.png',  // ← Changed
       slug: 'mermer-tezgah',
     },
     {
@@ -33,11 +34,10 @@ export default function FeaturedProducts() {
       name: 'Bar Sandalyesi Seti',
       price: 4999,
       comparePrice: null,
-      image: '/images/placeholder.jpg',
+      image: '/images/Featured/1.png',  // ← Changed (reusing 1.png for 4th product)
       slug: 'bar-sandalyesi-seti',
     },
   ]
-
   const formatPrice = (price: number) => {
     return new Intl.NumberFormat('tr-TR', {
       style: 'currency',
@@ -83,12 +83,12 @@ export default function FeaturedProducts() {
               <div className="bg-white border rounded-xl overflow-hidden hover:shadow-lg transition-all">
                 {/* Image */}
                 <div className="relative aspect-square bg-natural-100 overflow-hidden">
-                  <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-                    <div className="text-center">
-                      <div className="text-4xl mb-2">📦</div>
-                      <p className="text-xs">Ürün Görseli</p>
-                    </div>
-                  </div>
+                  <Image
+                    src={product.image}
+                    alt={product.name}
+                    fill
+                    className="object-cover group-hover:scale-105 transition-transform duration-300"
+                  />
                   {product.comparePrice && (
                     <div className="absolute top-3 right-3 bg-sage-500 text-white text-xs font-bold px-2 py-1 rounded-full">
                       %{calculateDiscount(product.price, product.comparePrice)} İndirim
