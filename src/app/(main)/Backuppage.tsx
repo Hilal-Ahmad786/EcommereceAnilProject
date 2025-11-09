@@ -5,7 +5,6 @@ import CategoryShowcase from '@/components/home/CategoryShowcase'
 import BlogPreview from '@/components/home/BlogPreview'
 import NewsletterSection from '@/components/home/NewsletterSection'
 import ProductCard from '@/components/product/ProductCard'
-import FeaturedProducts from '@/components/home/FeaturedProducts'
 
 async function getFeaturedProducts() {
   return await prisma.product.findMany({
@@ -43,8 +42,34 @@ export default async function HomePage() {
     <main>
       <HeroSection />
       
-      {/* Use your FeaturedProducts component with hardcoded images */}
-      <FeaturedProducts />
+      {/* Featured Products */}
+      {featuredProducts.length > 0 && (
+        <section className="container mx-auto px-4 py-16">
+          <div className="text-center mb-12">
+            <h2 className="text-3xl md:text-4xl font-bold text-walnut-700 mb-4">
+              Öne Çıkan Ürünler
+            </h2>
+            <p className="text-muted-foreground">
+              En beğenilen mutfak mobilyalarımız
+            </p>
+          </div>
+          
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+            {featuredProducts.map((product) => (
+              <ProductCard
+                key={product.id}
+                id={product.id}
+                name={product.name}
+                slug={product.slug}
+                price={Number(product.price)}
+                comparePrice={product.comparePrice ? Number(product.comparePrice) : undefined}
+                image={product.images[0]?.url || '/placeholder.jpg'}
+                stock={product.stock}
+              />
+            ))}
+          </div>
+        </section>
+      )}
       
       <CategoryShowcase categories={categories} />
       <BlogPreview />

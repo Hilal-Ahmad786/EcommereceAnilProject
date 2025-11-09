@@ -77,14 +77,13 @@ export default function ProductCard({
       <div className="bg-white border rounded-xl overflow-hidden hover:shadow-lg transition-all">
         {/* Image Container */}
         <div className="relative aspect-square bg-natural-100 overflow-hidden">
-          <img
-            src={image && image.startsWith('/') ? image : '/images/Featured/1.png'}
-            alt={name}
-            className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-            onError={(e) => {
-              e.currentTarget.src = '/images/Featured/1.png'
-            }}
-          />
+          {/* Placeholder Image */}
+          <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+            <div className="text-center">
+              <div className="text-5xl mb-2">🛋️</div>
+              <p className="text-xs">Ürün Görseli</p>
+            </div>
+          </div>
 
           {/* Badges */}
           <div className="absolute top-3 left-3 right-3 flex justify-between items-start">
