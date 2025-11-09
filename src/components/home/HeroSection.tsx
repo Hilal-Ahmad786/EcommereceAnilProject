@@ -1,5 +1,6 @@
 import Link from 'next/link'
 import { ArrowRight } from 'lucide-react'
+import Image from 'next/image'
 
 export default function HeroSection() {
   return (
@@ -48,16 +49,16 @@ export default function HeroSection() {
             </div>
           </div>
 
-          {/* Right Image/Visual */}
+{/* Right Image/Visual */}
           <div className="relative h-[400px] md:h-[600px]">
-            <div className="absolute inset-0 bg-gradient-to-br from-sage-200 to-walnut-200 rounded-2xl"></div>
-            {/* Placeholder for actual image */}
-            <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
-              <div className="text-center space-y-2">
-                <div className="text-6xl">🏠</div>
-                <p className="text-sm">Hero Image</p>
-                <p className="text-xs">(Kitchen mockup)</p>
-              </div>
+            <div className="absolute inset-0 bg-gradient-to-br from-sage-200 to-walnut-200 rounded-2xl overflow-hidden">
+              <Image
+                src="/images/1.png"
+                alt="Modern Kitchen Design"
+                fill
+                className="object-cover"
+                priority
+              />
             </div>
           </div>
         </div>

@@ -45,3 +45,7 @@ prisma/migrations/*
 .idea
 *.swp
 *.swo
+# Environment variables
+.env
+.env.local
+.env*.local
