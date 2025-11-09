@@ -17,10 +17,10 @@ interface CategoryShowcaseProps {
 
 // Hardcoded category images mapping
 const categoryImages: Record<string, string> = {
-  '0': '/images/Categori/1.png',
-  '1': '/images/Categori/2.png',
-  '2': '/images/Categori/3.png',
-  '3': '/images/Categori/4.png',
+  '0': '/images/Categori/1.webp',
+  '1': '/images/Categori/2.webp',
+  '2': '/images/Categori/3.webp',
+  '3': '/images/Categori/4.webp',
 }
 
 export default function CategoryShowcase({ categories }: CategoryShowcaseProps) {
@@ -49,7 +49,7 @@ export default function CategoryShowcase({ categories }: CategoryShowcaseProps) 
             {/* Background Image or Color */}
             <div className="absolute inset-0 bg-gradient-to-br from-walnut-400 to-walnut-600">
               <img
-                src={category.image || categoryImages[index.toString()] || '/images/Categori/1.png'}
+                src={category.image || categoryImages[index.toString()] || '/images/Categori/1.webp'}
                 alt={category.name}
                 className="w-full h-full object-cover opacity-60 group-hover:opacity-40 group-hover:scale-110 transition-all duration-300"
               />

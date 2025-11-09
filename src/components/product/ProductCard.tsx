@@ -78,11 +78,11 @@ export default function ProductCard({
         {/* Image Container */}
         <div className="relative aspect-square bg-natural-100 overflow-hidden">
           <img
-            src={image && image.startsWith('/') ? image : '/images/Featured/1.png'}
+            src={image && image.startsWith('/') ? image : '/images/Featured/1.webp'}
             alt={name}
             className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
             onError={(e) => {
-              e.currentTarget.src = '/images/Featured/1.png'
+              e.currentTarget.src = '/images/Featured/1.webp'
             }}
           />
 

@@ -10,7 +10,7 @@ export default function BlogPreview() {
       excerpt: 'Bu yıl mutfak tasarımında öne çıkan renkler, malzemeler ve stil tercihleri...',
       slug: '2024-mutfak-tasarim-trendleri',
       date: '2024-01-15',
-      image: '/images/blog/1.png',
+      image: '/images/blog/1.webp',
     },
     {
       id: '2',
@@ -18,7 +18,7 @@ export default function BlogPreview() {
       excerpt: 'Sınırlı alanı maksimum verimlilikle kullanmanın yolları...',
       slug: 'kucuk-mutfaklar-icin-depolama-ipucu',
       date: '2024-01-10',
-      image: '/images/blog/2.png',
+      image: '/images/blog/2.webp',
     },
     {
       id: '3',
@@ -26,7 +26,7 @@ export default function BlogPreview() {
       excerpt: 'Ahşap mutfak mobilyalarınızı yıllarca yeni gibi tutmanın sırları...',
       slug: 'ahsap-mutfak-bakim-rehberi',
       date: '2024-01-05',
-      image: '/images/blog/3.png',
+      image: '/images/blog/3.webp',
     },
   ]
 

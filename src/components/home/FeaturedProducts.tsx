@@ -10,7 +10,7 @@ const featuredProducts = [
       name: 'Modern Mutfak Dolabı',
       price: 12999,
       comparePrice: 15999,
-      image: '/images/Featured/1.png',  // ← Changed
+      image: '/images/Featured/1.webp',  // ← Changed
       slug: 'modern-mutfak-dolabi',
     },
     {
@@ -18,7 +18,7 @@ const featuredProducts = [
       name: 'Ahşap Mutfak Adası',
       price: 24999,
       comparePrice: null,
-      image: '/images/Featured/2.png',  // ← Changed
+      image: '/images/Featured/2.webp',  // ← Changed
       slug: 'ahsap-mutfak-adasi',
     },
     {
@@ -26,7 +26,7 @@ const featuredProducts = [
       name: 'Mermer Tezgah',
       price: 18999,
       comparePrice: 21999,
-      image: '/images/Featured/3.png',  // ← Changed
+      image: '/images/Featured/3.webp',  // ← Changed
       slug: 'mermer-tezgah',
     },
     {
@@ -34,7 +34,7 @@ const featuredProducts = [
       name: 'Bar Sandalyesi Seti',
       price: 4999,
       comparePrice: null,
-      image: '/images/Featured/1.png',  // ← Changed (reusing 1.png for 4th product)
+      image: '/images/Featured/1.webp',  // ← Changed (reusing 1.webp for 4th product)
       slug: 'bar-sandalyesi-seti',
     },
   ]
