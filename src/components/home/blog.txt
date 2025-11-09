@@ -10,7 +10,7 @@ export default function BlogPreview() {
       excerpt: 'Bu yıl mutfak tasarımında öne çıkan renkler, malzemeler ve stil tercihleri...',
       slug: '2024-mutfak-tasarim-trendleri',
       date: '2024-01-15',
-      image: '/images/blog/1.png',
+      image: '/images/blog/placeholder.jpg',
     },
     {
       id: '2',
@@ -18,7 +18,7 @@ export default function BlogPreview() {
       excerpt: 'Sınırlı alanı maksimum verimlilikle kullanmanın yolları...',
       slug: 'kucuk-mutfaklar-icin-depolama-ipucu',
       date: '2024-01-10',
-      image: '/images/blog/2.png',
+      image: '/images/blog/placeholder.jpg',
     },
     {
       id: '3',
@@ -26,7 +26,7 @@ export default function BlogPreview() {
       excerpt: 'Ahşap mutfak mobilyalarınızı yıllarca yeni gibi tutmanın sırları...',
       slug: 'ahsap-mutfak-bakim-rehberi',
       date: '2024-01-05',
-      image: '/images/blog/3.png',
+      image: '/images/blog/placeholder.jpg',
     },
   ]
 
@@ -71,11 +71,12 @@ export default function BlogPreview() {
               <article className="bg-white border rounded-xl overflow-hidden hover:shadow-lg transition-all">
                 {/* Image */}
                 <div className="relative aspect-video bg-natural-100 overflow-hidden">
-                  <img
-                    src={post.image}
-                    alt={post.title}
-                    className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300"
-                  />
+                  <div className="absolute inset-0 flex items-center justify-center text-muted-foreground">
+                    <div className="text-center">
+                      <div className="text-4xl mb-2">📰</div>
+                      <p className="text-xs">Blog Görseli</p>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Content */}
