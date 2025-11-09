@@ -15,14 +15,6 @@ interface CategoryShowcaseProps {
   categories: Category[]
 }
 
-// Hardcoded category images mapping
-const categoryImages: Record<string, string> = {
-  '0': '/images/Categori/1.png',
-  '1': '/images/Categori/2.png',
-  '2': '/images/Categori/3.png',
-  '3': '/images/Categori/4.png',
-}
-
 export default function CategoryShowcase({ categories }: CategoryShowcaseProps) {
   if (!categories || categories.length === 0) {
     return null
@@ -40,7 +32,7 @@ export default function CategoryShowcase({ categories }: CategoryShowcaseProps) 
       </div>
 
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
-        {categories.map((category, index) => (
+        {categories.map((category) => (
           <Link
             key={category.id}
             href={`/urunler?kategori=${category.slug}`}
@@ -48,11 +40,17 @@ export default function CategoryShowcase({ categories }: CategoryShowcaseProps) 
           >
             {/* Background Image or Color */}
             <div className="absolute inset-0 bg-gradient-to-br from-walnut-400 to-walnut-600">
-              <img
-                src={category.image || categoryImages[index.toString()] || '/images/Categori/1.png'}
-                alt={category.name}
-                className="w-full h-full object-cover opacity-60 group-hover:opacity-40 group-hover:scale-110 transition-all duration-300"
-              />
+              {category.image ? (
+                <img
+                  src={category.image}
+                  alt={category.name}
+                  className="w-full h-full object-cover opacity-60 group-hover:opacity-40 group-hover:scale-110 transition-all duration-300"
+                />
+              ) : (
+                <div className="w-full h-full flex items-center justify-center text-8xl opacity-30">
+                  🏠
+                </div>
+              )}
             </div>
 
             {/* Content Overlay */}
